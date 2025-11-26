@@ -10,7 +10,7 @@ export interface Plant {
 	care: string;
 	uses: string;
 	notes?: string;
-	image_url?: string;
+	imageUrl?: string;
 }
 
 export interface PlantRecord {
