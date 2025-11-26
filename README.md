@@ -40,9 +40,12 @@ The backend API server will start at http://localhost:3001
 - `npm run build` - Build for production
 - `npm run preview` - Preview production build
 - `npm run lint` - Run ESLint
+- `npm run format` - Format code with Prettier
 
 #### Backend
 - `npm run dev` - Start development server with hot reload
 - `npm run build` - Compile TypeScript to JavaScript
 - `npm run start` - Run compiled production build
+- `npm run lint` - Run ESLint
+- `npm run format` - Format code with Prettier
 
