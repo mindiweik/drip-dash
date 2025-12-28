@@ -9,6 +9,18 @@
     box-sizing: border-box;
   }
 
+  button {
+    background: white;
+    border: black solid 1px;
+    border-radius: 5px;
+    color: black;
+    font: inherit;
+    cursor: pointer;
+    outline: none;
+    height: 2.25em;
+    margin: 0.5em;
+  }
+
   html,
   body {
     background-color: white;
