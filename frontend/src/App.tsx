@@ -10,7 +10,11 @@ function App() {
       <h1 className="text-2xl font-bold">Drip Dashboard</h1>
       <h2 className="text-lg">{systemName}</h2>
       <CoreButton onClick={() => setCount((count) => count + 1)} text={count} />
-      <CoreButton onClick={() => setSystemName('New System')} text={systemName} />
+      <CoreButton
+        backgroundColor="yellow"
+        onClick={() => setSystemName('New System')}
+        text={systemName}
+      />
     </div>
   );
 }

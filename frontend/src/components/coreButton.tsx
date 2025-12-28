@@ -26,36 +26,43 @@ function CoreButton({
     lg: 'px-6 py-3 w-[18em]',
   };
 
-  const backgroundColorOptions: Record<ButtonBackgroundColor, string> = {
-    white: 'bg-white',
-    'light-gray': 'bg-gray-100',
-    red: 'bg-red-200',
-    orange: 'bg-orange-200',
-    yellow: 'bg-yellow-200',
-    green: 'bg-green-200',
+  const backgroundColorMap: Record<ButtonBackgroundColor, string> = {
+    white: '#ffffff',
+    'light-gray': '#f3f4f6',
+    red: '#fecaca',
+    orange: '#fed7aa',
+    yellow: '#fef08a',
+    green: '#bbf7d0',
   };
 
   const buttonContent = children || text;
-  const bgColor = backgroundColorOptions[backgroundColor];
+  const bgColorValue = backgroundColorMap[backgroundColor];
   const isLargeButton = size === 'lg';
   const isClickable = !disabled && onClick && !isLargeButton;
 
   const buttonClasses = [
     sizeOptions[size],
-    bgColor,
     isClickable ? 'cursor-pointer hover:opacity-80' : 'cursor-default',
     'transition-opacity',
   ]
     .filter(Boolean)
     .join(' ');
 
+  const buttonStyle = {
+    backgroundColor: bgColorValue,
+  };
+
   // Large buttons are always non-clickable (rendered as div)
   if (isLargeButton) {
-    return <div className={buttonClasses}>{buttonContent}</div>;
+    return (
+      <div className={buttonClasses} style={buttonStyle}>
+        {buttonContent}
+      </div>
+    );
   }
 
   return (
-    <button onClick={onClick} disabled={disabled} className={buttonClasses}>
+    <button onClick={onClick} disabled={disabled} className={buttonClasses} style={buttonStyle}>
       {buttonContent}
     </button>
   );

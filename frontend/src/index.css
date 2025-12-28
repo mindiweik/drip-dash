@@ -10,7 +10,7 @@
   }
 
   button {
-    background: white;
+    background: unset;
     border: black solid 1px;
     border-radius: 5px;
     color: black;
