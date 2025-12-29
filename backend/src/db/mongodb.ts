@@ -42,10 +42,11 @@ export async function getDb(): Promise<Db> {
 export async function checkMongoDBConnection(): Promise<boolean> {
   try {
     if (!db) {
-      await connectToMongoDB();
+      // If there is no existing connection, report as not connected
+      return false;
     }
     // Ping the database to check connection
-    await db!.admin().ping();
+    await db.admin().ping();
     return true;
   } catch (error) {
     console.error('MongoDB connection check failed:', error);
