@@ -1,9 +1,11 @@
 import express from 'express';
 import { connectToMongoDB, disconnectFromMongoDB } from './db/mongodb.js';
 import apiRouter from './routes/index.js';
+import { Server } from 'http';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+let server: Server | null = null;
 
 app.use(express.json());
 
@@ -15,7 +17,7 @@ async function startServer() {
   try {
     await connectToMongoDB();
 
-    app.listen(PORT, () => {
+    server = app.listen(PORT, () => {
       console.log(`Backend server running on http://localhost:${PORT}`);
     });
   } catch (error) {
@@ -27,6 +29,25 @@ async function startServer() {
 // Graceful shutdown
 async function gracefulShutdown(signal: string) {
   console.log(`${signal} signal received: closing HTTP server`);
+
+  if (server) {
+    try {
+      await new Promise<void>((resolve, reject) => {
+        server!.close((err) => {
+          if (err) {
+            console.error('Error closing HTTP server:', err);
+            reject(err);
+          } else {
+            console.log('HTTP server closed');
+            resolve();
+          }
+        });
+      });
+    } catch (error) {
+      console.error('Failed to close HTTP server gracefully:', error);
+    }
+  }
+
   await disconnectFromMongoDB();
   process.exit(0);
 }
