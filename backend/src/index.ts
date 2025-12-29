@@ -31,8 +31,9 @@ async function gracefulShutdown(signal: string) {
   console.log(`${signal} signal received: closing HTTP server`);
 
   if (server) {
+    const serverToClose = server;
     await new Promise<void>((resolve) => {
-      server!.close(() => {
+      serverToClose.close(() => {
         console.log('HTTP server closed');
         resolve();
       });
