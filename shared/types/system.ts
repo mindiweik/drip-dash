@@ -21,10 +21,11 @@ export interface GardynSystemProper extends BaseSystem {
 }
 
 export type GardynSystem = NurserySystem | GardynSystemProper;
+
 export interface SystemSlot {
 	id: string;
 	systemId: string;
 	rowIndex: number;
 	colIndex: number;
-	label?: string; // optional "Plant" label or emoji
+	label?: string; // optional "Plant" label or task emoji
 }
