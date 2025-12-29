@@ -32,17 +32,21 @@ async function gracefulShutdown(signal: string) {
 
   if (server) {
     const serverToClose = server;
-    await new Promise<void>((resolve, reject) => {
-      serverToClose.close((err) => {
-        if (err) {
-          console.error('Error closing HTTP server:', err);
-          reject(err);
-        } else {
-          console.log('HTTP server closed');
-          resolve();
-        }
+    try {
+      await new Promise<void>((resolve, reject) => {
+        serverToClose.close((err) => {
+          if (err) {
+            console.error('Error closing HTTP server:', err);
+            reject(err);
+          } else {
+            console.log('HTTP server closed');
+            resolve();
+          }
+        });
       });
-    });
+    } catch (error) {
+      console.error('Failed to close HTTP server gracefully:', error);
+    }
   }
 
   await disconnectFromMongoDB();
