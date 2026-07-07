@@ -134,6 +134,10 @@ One responsive page, tablet-first (its destiny is a wall-mounted display):
 
 Design rules: big type, high contrast, generous tap targets (read from feet away, tapped with wet fingers), auto-refresh on a timer with zero interaction required, dark mode by default.
 
+## Framework choice: React (not Astro)
+
+The frontend stays React 19 + Vite (the existing scaffold and Mindi's daily stack). Astro was considered and rejected for this app: Astro optimizes content-heavy mostly-static sites that ship minimal JS, but the kiosk is almost entirely dynamic (live polling, tap-to-complete, auto-refresh). It would end up as one big client island running React anyway, paying Astro's overhead for none of its benefit. Astro remains the right tool for a future Drip Dash marketing/landing page, not this dashboard. Stack is already on current majors (React 19, Express 5, Vite, Tailwind v4, TypeScript 5.9); the only stale dependency is MongoDB, removed in Phase 1.
+
 ## Testing
 
 Light, matching the build:
