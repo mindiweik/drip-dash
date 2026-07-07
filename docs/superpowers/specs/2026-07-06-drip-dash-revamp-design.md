@@ -1,19 +1,31 @@
 # Drip Dash Revamp: Phase 1 Design
 
 **Date:** 2026-07-06
-**Status:** Approved (brainstormed with MARVIN)
+**Status:** Approved (brainstormed with MARVIN); pivoted 2026-07-06 after research spike (see below).
 
 ## Vision and roadmap
 
-Drip Dash becomes the always-on garden companion for Mindi's two Gardyn hydroponic systems: glanceable status plus a break-time chore board, eventually running on a dedicated Raspberry Pi with a small tablet/monitor as a kiosk display.
+Drip Dash becomes the always-on garden companion for Mindi's two Gardyn 4.0 hydroponic systems: glanceable status plus a break-time chore board, eventually running on a dedicated Raspberry Pi with a small tablet/monitor as a kiosk display.
 
-Three phases, each independently shippable:
+Phases, each independently shippable:
 
-1. **Phase 1 (this spec): revamp with real data.** Dashboard + chore board fed by the unofficial Gardyn cloud API. Develop on the Mac, deploy to a Pi later.
-2. **Phase 2: local control.** Talk to the Gardyn hardware directly on the LAN (community "jailbreak"/local-access projects), removing the cloud dependency. Swaps in behind the Phase 1 adapter interface.
+1. **Phase 1 (this spec): build the dashboard against a mock data source.** The full app (dashboard, chore board, SQLite, kiosk view) ships and is testable against a `GardynMockSource` that returns realistic fake snapshots. Zero hardware risk. Develop on the Mac.
+2. **Phase 2: local Gardyn data source (separate future spec).** Implement a real `GardynDataSource` that talks to the Gardyn hardware locally, swapped in behind the Phase 1 adapter interface. This is its own deliberately-scoped hardware spike, not part of Phase 1 (rationale below).
 3. **Phase 3: AI layer.** Local or routed model adding insights on top of accumulated garden data. Not designed yet.
 
-The prime constraint from the 2026-06 time audit: build smaller things. Phase 1 is deliberately minimal.
+The prime constraint from the 2026-06 time audit: build smaller things. Phase 1 is deliberately minimal and carries no hardware risk.
+
+## Why mock-first (research spike findings, 2026-07-06)
+
+The original plan was cloud-first: feed Phase 1 from an unofficial Gardyn cloud API, go local in Phase 2. A research spike into the community landscape flipped that calculus:
+
+- **The cloud API is actively being disclosed as insecure.** As of June-July 2026 the GitHub `gardyn` topic is dominated by ~12 CVEs and two CISA advisories (ICSA-26-055-03, ICSA-26-183-03): missing auth on user/admin endpoints, IDOR authorization bypass, hardcoded IoT Hub credentials, publicly exposed Azure blob storage with device logs. An API under active security disclosure is likely to change or lock down mid-build. Building Phase 1 on it means building on sand. (Personal security note for Mindi: worth a glance at those advisories regardless of this project, since the Gardyns are on the home network.)
+- **The cleanest cloud reference integration is gone.** `JadCham/home-assistant-gardyn-hacs` now 404s.
+- **The local-control project is mature but heavyweight.** `iot-root/garden-of-eden` (106 stars, ~99 commits, active) runs on the Gardyn's own Raspberry Pi and exposes a local Flask REST API + MQTT for sensors (ultrasonic water level, AM2320 temp/humidity, PCB temp), lights (on/off + brightness), and pump (on/off + PWM speed). But it requires **reimaging the Pi with a clean Linux install** that replaces the Gardyn stock software entirely. That is destructive, hard to reverse, kills the stock app on that unit, has unconfirmed 4.0 support, and offers no multi-unit guidance.
+
+Reimaging both of Mindi's only two growing systems is the single riskiest, most committal version of this project, and doing it before any dashboard exists front-loads all the risk. The decision: **decouple the dashboard from the data source entirely.** Build and ship the whole visible app against a mock (which tests need anyway), then treat the real local data source as a separate, later spike that experiments on ONE Gardyn while the second stays on stock as a control/fallback, and properly evaluates non-destructive SSH-into-stock access before assuming the full reimage is required.
+
+The adapter interface makes this clean: the UI genuinely does not care where data comes from, so the source is a swap, not a rewrite.
 
 ## Jobs to be done
 
@@ -22,15 +34,9 @@ The prime constraint from the 2026-06 time audit: build smaller things. Phase 1 
 
 Explicit non-goals for Phase 1: Motion integration, a separate journal/history UI (data is captured for it, UI comes later), real-time push (SSE/websockets), multi-user anything, alerting/notifications.
 
-## Step 0: research spike
+## Research spike: DONE (2026-07-06)
 
-Before implementation, survey the community projects around Gardyn:
-
-- Find the healthiest unofficial cloud API client (Home Assistant integration, standalone clients).
-- Document: auth flow, endpoints, response shapes, how two devices on one account appear, rate limits or gotchas.
-- Bank Phase 2 recon for free: note any local-access/jailbreak projects and what they reveal about the hardware.
-
-The `GardynCloudSource` implementation and the exact `GardynSnapshot` fields are finalized from this spike. The spike output is a short findings doc in `docs/`.
+Completed during brainstorming; findings captured in "Why mock-first" above. Outcome: cloud path dropped, Phase 1 goes against a mock, real local source deferred to its own spec. The `GardynSnapshot` shape below is modeled on the sensor set that `garden-of-eden` proves is available locally (water level, temp, humidity, light state), so the mock produces realistic data and the future local source has a known target shape.
 
 ## Architecture
 
@@ -39,7 +45,7 @@ One repo (this one), two packages, one runtime process in production:
 ```
 drip-dash/
 ├── backend/          Express + TypeScript
-│   ├── datasources/  GardynDataSource interface + GardynCloudSource
+│   ├── datasources/  GardynDataSource interface + GardynMockSource
 │   ├── poller/       setInterval loop (no cron dependency)
 │   ├── care/         computeChores() (a function, not a subsystem)
 │   ├── db/           SQLite via better-sqlite3 (replaces MongoDB)
@@ -80,12 +86,15 @@ interface GardynDataSource {
 }
 ```
 
-One method. `GardynSnapshot` is the normalized shape in `shared/`. Everything above the adapter (poller, chores, API, UI) depends only on this shape, which is the Phase 2 insurance policy: `GardynLocalSource` later implements the same interface and nothing else changes.
+One method. `GardynSnapshot` is the normalized shape in `shared/`. Everything above the adapter (poller, chores, API, UI) depends only on this shape, which is the whole insurance policy: the future `GardynLocalSource` implements the same interface and nothing else changes.
 
-**GardynCloudSource:**
-- Gardyn credentials in `.env` (never hardcoded, `.env.example` updated with placeholders).
-- Manages the auth token, re-login on expiry.
-- Endpoints and response handling per the research spike.
+**GardynMockSource (Phase 1):**
+- Returns realistic fake `GardynSnapshot` values with light variation over time (water level slowly dropping, temp/humidity jitter, light state following a day/night schedule) so the dashboard and chore triggers behave lifelike during development.
+- Deterministic seeding option for tests (fixed values in, fixed snapshot out).
+- No credentials, no network. Pure in-process.
+
+**GardynLocalSource (Phase 2, separate spec, not built here):**
+- Will talk to the Gardyn hardware locally and normalize into the same `GardynSnapshot`. Left as a stub/interface note only.
 
 **Poller:**
 - `setInterval`, every 15 minutes, each Gardyn in turn: fetch, insert snapshot, run `computeChores()`.
@@ -94,7 +103,7 @@ One method. `GardynSnapshot` is the normalized shape in `shared/`. Everything ab
 **Failure behavior (the entire error-handling story):**
 - Fetch failure: log, skip the cycle, retry next interval. No retry storms, no alerting.
 - Staleness is the alert: the UI shows "updated X min ago" and tints the card when data is old.
-- Auth failure: one re-login attempt, then a visible "reconnect needed" banner.
+- (The mock does not fail in Phase 1, but the poller still wraps fetches in try/catch so the future local source inherits this behavior for free.)
 
 ## Care logic
 
@@ -130,7 +139,7 @@ Design rules: big type, high contrast, generous tap targets (read from feet away
 Light, matching the build:
 
 - Unit tests on `computeChores()`: schedule due, trigger fires, dedupe, completion stamping. TDD.
-- Unit tests on the `GardynCloudSource` normalizer: recorded API fixture in, `GardynSnapshot` out.
+- Unit tests on `GardynMockSource`: deterministic seed in, expected `GardynSnapshot` out.
 - No E2E suite. It is a personal kiosk; break time is the E2E suite.
 
 ## Deployment path
@@ -138,9 +147,10 @@ Light, matching the build:
 - **Now:** `npm run dev` on the Mac (backend + frontend).
 - **Later:** fresh Raspberry Pi + small monitor or repurposed tablet as the kiosk. Single Node process under systemd. Footprint is roughly 100-150MB RAM and near-zero idle CPU, comfortably within even modest Pi hardware.
 
-## Open questions (resolved by the research spike)
+## Deferred to the Phase 2 local-source spec
 
-- Exact cloud API auth flow, endpoints, and response shapes.
-- Whether camera photos are practically fetchable (frequency, URLs, auth).
-- How two Gardyns on one account are addressed.
-- Anything the local-access community work implies we should keep in mind for the Phase 2 swap.
+- How to access a stock Gardyn 4.0 locally: non-destructive SSH-into-stock and read sensors in place, versus the full `garden-of-eden` reimage. Evaluate the non-destructive path first.
+- Whether garden-of-eden (or its sensor approach) works on 4.0 hardware.
+- Multi-unit addressing for the two Gardyns.
+- Whether camera photos are practically fetchable locally.
+- Sequencing rule: experiment on ONE Gardyn; keep the second on stock as a control/fallback.
