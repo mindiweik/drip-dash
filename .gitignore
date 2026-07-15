@@ -10,3 +10,13 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Dependencies
+node_modules
+
+# Build artifacts
+dist
+*.tsbuildinfo
+
+# Database files
+drip-dash.db*

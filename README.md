@@ -1,39 +1,34 @@
 # drip-dash
 A dashboard experience for personal Gardyn plant management.
 
-## Project Structure
+## Project structure
 
 - **frontend/**: TypeScript + React application built with Vite
 - **backend/**: TypeScript + Express API server
 
-## Getting Started
+## Getting started
 
-### Prerequisites
-
-- Node.js (v18 or higher recommended)
-- npm
-
-### Frontend
+Development (backend on :3001, frontend on Vite with an /api proxy):
 
 ```bash
-cd frontend
 npm install
+npm --prefix backend install
+npm --prefix frontend install
 npm run dev
 ```
 
-The frontend development server will start at http://localhost:5173
+Phase 1 runs against a mock Gardyn data source (no hardware needed). See
+`docs/superpowers/specs/2026-07-06-drip-dash-revamp-design.md` for the roadmap:
+a real local data source is a separate later phase.
 
-### Backend
+Production (single Node process serving API + built UI):
 
 ```bash
-cd backend
-npm install
-npm run dev
+npm run build
+npm start
 ```
 
-The backend API server will start at http://localhost:3001
-
-### Available Scripts
+### Available scripts
 
 #### Frontend
 - `npm run dev` - Start development server

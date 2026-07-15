@@ -5,6 +5,8 @@ import { getDb } from './db/database.js';
 import { seedDefaultSchedules } from './care/chores.js';
 import { startPolling } from './poller/poller.js';
 import { GardynMockSource } from './datasources/GardynMockSource.js';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -13,6 +15,10 @@ let stopPolling: (() => void) | null = null;
 
 app.use(express.json());
 app.use('/api', apiRouter);
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const frontendDist = path.resolve(__dirname, '../../frontend/dist');
+app.use(express.static(frontendDist));
 
 function startServer() {
   const db = getDb();

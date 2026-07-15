@@ -7,14 +7,10 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
+    "composite": true,
+    "declaration": true,
     "outDir": "./dist",
-    "rootDir": "./src",
-    "baseUrl": ".",
-    "paths": {
-      "@shared/*": ["../shared/*"]
-    }
+    "rootDir": "."
   },
-  "include": ["src/**/*"],
-  "exclude": ["src/**/*.test.ts"],
-  "references": [{ "path": "../shared" }]
+  "include": ["**/*"]
 }
