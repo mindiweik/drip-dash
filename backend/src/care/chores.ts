@@ -110,7 +110,7 @@ export function computeChores(db: Database.Database, now: string): void {
   for (const gardynId of GARDYN_IDS) {
     const snap = getLatestSnapshot(db, gardynId);
     if (snap && snap.waterLevelPct < WATER_LOW_THRESHOLD) {
-      insertChore(db, gardynId, `Top up water (${gardynId})`, 'data-trigger', now);
+      insertChore(db, gardynId, `Top up water + plant food (${gardynId})`, 'data-trigger', now);
     }
   }
 

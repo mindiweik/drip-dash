@@ -3,9 +3,12 @@ import type Database from 'better-sqlite3';
 // Every gardyn gets this same baseline set of recurring care schedules.
 const GARDYN_IDS = ['gardyn-1', 'gardyn-2'];
 
+// Mirrors Mindi's real Gardyn routine (plant food rides along with water
+// top-ups, so it lives on the data-triggered chore, not a schedule here).
 const DEFAULT_SCHEDULES = [
-  { name: 'Add nutrients', everyDays: 14 },
-  { name: 'Deep clean', everyDays: 60 },
+  { name: 'Root check + prune', everyDays: 14 },
+  { name: 'Tank clean', everyDays: 56 },
+  { name: 'Citric acid deep clean', everyDays: 182 },
 ];
 
 // Idempotent: only seeds when care_schedules is empty, so re-running on an
