@@ -38,13 +38,23 @@ export function makeGardenRouter(db: Database.Database, now: () => Date = () => 
   });
 
   router.put('/plants/:id', (req, res) => {
-    const { name, variety, planted_at, notes } = req.body ?? {};
+    const id = Number(req.params.id);
+    const existing: any = db.prepare('SELECT * FROM plants WHERE id = ?').get(id);
+    if (!existing) {
+      res.status(404).json({ ok: false });
+      return;
+    }
+    const body = req.body ?? {};
+    const name = body.name !== undefined ? body.name : existing.name;
+    const variety = body.variety !== undefined ? body.variety : existing.variety;
+    const planted_at = body.planted_at !== undefined ? body.planted_at : existing.planted_at;
+    const notes = body.notes !== undefined ? body.notes : existing.notes;
     db.prepare('UPDATE plants SET name = ?, variety = ?, planted_at = ?, notes = ? WHERE id = ?').run(
-      name ?? null,
-      variety ?? null,
-      planted_at ?? null,
-      notes ?? null,
-      Number(req.params.id),
+      name,
+      variety,
+      planted_at,
+      notes,
+      id,
     );
     res.json({ ok: true });
   });
