@@ -10,6 +10,8 @@
 
 **Ship target:** weekend of 2026-07-18/19 (low-pressure goal, not a deadline; mom visits the prior weekend).
 
+> **Note (Mindi, 2026-07-14, mid-execution):** the code blocks in this plan are a reference implementation, not a verbatim mandate. Deviate wherever it makes the code cleaner or more editable long-term, as long as behavior, interfaces, and test coverage hold. Review against behavior and interfaces, not plan-text match.
+
 ## Global Constraints
 
 - Repo: `~/dev/educational-repos/drip-dash`, work on branch `feat/revamp-spec` (spec already committed there).
