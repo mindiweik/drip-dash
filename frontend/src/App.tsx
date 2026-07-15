@@ -1,21 +1,48 @@
-import { useState } from 'react';
-import CoreButton from './components/coreButton';
+import { useEffect, useState, useCallback } from 'react';
+import { fetchStatus, fetchChores, fetchPlants, completeChore } from './api';
+import type { GardenStatus, Chore, PlantRow } from './api';
+import StatusStrip from './components/StatusStrip';
+import BreakBoard from './components/BreakBoard';
+import PlantGrid from './components/PlantGrid';
+
+const REFRESH_MS = 60_000;
 
 function App() {
-  const [count, setCount] = useState(0);
-  const [systemName, setSystemName] = useState('Mystical Menagerie');
+  const [gardens, setGardens] = useState<GardenStatus[]>([]);
+  const [chores, setChores] = useState<Chore[]>([]);
+  const [plants, setPlants] = useState<PlantRow[]>([]);
+
+  const load = useCallback(async () => {
+    const [g, c, p] = await Promise.all([fetchStatus(), fetchChores(), fetchPlants()]);
+    setGardens(g);
+    setChores(c);
+    setPlants(p);
+  }, []);
+
+  useEffect(() => {
+    void load();
+    const handle = setInterval(() => void load(), REFRESH_MS);
+    return () => clearInterval(handle);
+  }, [load]);
+
+  const onComplete = async (id: number) => {
+    await completeChore(id);
+    await load();
+  };
 
   return (
-    <div>
-      <h1 className="text-2xl font-bold">Drip Dashboard</h1>
-      <h2 className="text-lg">{systemName}</h2>
-      <CoreButton onClick={() => setCount((count) => count + 1)} text={count} />
-      <CoreButton
-        backgroundColor="yellow"
-        onClick={() => setSystemName('New System')}
-        text={systemName}
-      />
-    </div>
+    <main className="mx-auto max-w-4xl space-y-8 p-6">
+      <h1 className="text-3xl font-bold">Drip Dash</h1>
+      <StatusStrip gardens={gardens} />
+      <section className="space-y-3">
+        <h2 className="text-xl font-semibold">Break board</h2>
+        <BreakBoard chores={chores} onComplete={onComplete} />
+      </section>
+      <section className="space-y-3">
+        <h2 className="text-xl font-semibold">Plants</h2>
+        <PlantGrid plants={plants} />
+      </section>
+    </main>
   );
 }
 
