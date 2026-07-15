@@ -1,5 +1,10 @@
 import type { GardenStatus } from '../api';
 
+// Snapshots store Celsius (sensor-native); the kiosk displays Fahrenheit.
+function toFahrenheit(celsius: number): number {
+  return Math.round((celsius * 9) / 5 + 32);
+}
+
 export default function StatusStrip({ gardens }: { gardens: GardenStatus[] }) {
   return (
     <div className="grid gap-4 sm:grid-cols-2">
@@ -24,7 +29,7 @@ export default function StatusStrip({ gardens }: { gardens: GardenStatus[] }) {
                   <div className="text-slate-400">water</div>
                 </div>
                 <div className="text-lg text-slate-300">
-                  <div>{s.temperatureC}&deg;C</div>
+                  <div>{toFahrenheit(s.temperatureC)}&deg;F</div>
                   <div>{s.humidityPct}% humidity</div>
                   <div>light {s.light}</div>
                 </div>
