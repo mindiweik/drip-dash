@@ -79,6 +79,33 @@ describe('computeChores', () => {
     expect(getOpenChores(db).length).toBe(0);
   });
 
+  it('does not duplicate a schedule chore when the schedule name changes while it is open', () => {
+    const db = freshDb();
+    db.prepare(
+      'INSERT INTO care_schedules (gardyn_id, name, every_days, last_done_at) VALUES (?, ?, ?, ?)',
+    ).run('gardyn-1', 'Add nutrients', 14, '2026-06-01T12:00:00.000Z');
+    computeChores(db, '2026-07-06T12:00:00.000Z');
+    db.prepare('UPDATE care_schedules SET name = ? WHERE name = ?').run('Feed plants', 'Add nutrients');
+    computeChores(db, '2026-07-06T13:00:00.000Z');
+    const open = getOpenChores(db).filter((c) => c.source === 'schedule');
+    expect(open.length).toBe(1);
+  });
+
+  it('tags data-trigger and schedule chores with the correct scheduleId', () => {
+    const db = freshDb();
+    insertSnapshot(db, snap({ waterLevelPct: 10 }));
+    db.prepare(
+      'INSERT INTO care_schedules (gardyn_id, name, every_days, last_done_at) VALUES (?, ?, ?, ?)',
+    ).run('gardyn-1', 'Add nutrients', 14, '2026-06-01T12:00:00.000Z');
+    computeChores(db, '2026-07-06T12:00:00.000Z');
+    const open = getOpenChores(db);
+    const waterChore = open.find((c) => c.source === 'data-trigger' && c.title.includes('water'))!;
+    expect(waterChore.scheduleId == null).toBe(true);
+    const scheduleRow: any = db.prepare('SELECT id FROM care_schedules WHERE name = ?').get('Add nutrients');
+    const scheduleChore = open.find((c) => c.source === 'schedule' && c.title.includes('nutrients'))!;
+    expect(scheduleChore.scheduleId).toBe(scheduleRow.id);
+  });
+
   it('seedDefaultSchedules inserts schedules for both gardyns once', () => {
     const db = freshDb();
     seedDefaultSchedules(db);

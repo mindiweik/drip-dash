@@ -66,10 +66,20 @@ export function completeChore(db: Database.Database, id: number, now: string): v
   }
 }
 
-function hasOpenChore(db: Database.Database, gardynId: string | null, title: string): boolean {
+// Data-trigger chores have no schedule_id, so they're deduped by (gardyn_id, title).
+function hasOpenChoreByTitle(db: Database.Database, gardynId: string | null, title: string): boolean {
   const row = db
     .prepare('SELECT 1 FROM chores WHERE completed_at IS NULL AND title = ? AND gardyn_id IS ?')
     .get(title, gardynId);
+  return !!row;
+}
+
+// Schedule-sourced chores are deduped by (gardyn_id, schedule_id) so renaming a
+// care_schedules.name while a chore is still open does not create a duplicate.
+function hasOpenChoreBySchedule(db: Database.Database, gardynId: string | null, scheduleId: number): boolean {
+  const row = db
+    .prepare('SELECT 1 FROM chores WHERE completed_at IS NULL AND schedule_id = ? AND gardyn_id IS ?')
+    .get(scheduleId, gardynId);
   return !!row;
 }
 
@@ -81,7 +91,11 @@ function insertChore(
   now: string,
   scheduleId: number | null = null,
 ): void {
-  if (hasOpenChore(db, gardynId, title)) return;
+  const alreadyOpen =
+    source === 'schedule' && scheduleId != null
+      ? hasOpenChoreBySchedule(db, gardynId, scheduleId)
+      : hasOpenChoreByTitle(db, gardynId, title);
+  if (alreadyOpen) return;
   db.prepare(
     'INSERT INTO chores (gardyn_id, title, source, created_at, completed_at, schedule_id) VALUES (?, ?, ?, ?, NULL, ?)',
   ).run(gardynId, title, source, now, scheduleId);
