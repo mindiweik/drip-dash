@@ -1,14 +1,10 @@
 import { Router } from 'express';
 import healthRouter from './health.js';
+import { makeGardenRouter } from './garden.js';
+import { getDb } from '../db/database.js';
 
 const router = Router();
-
-// Health check routes
 router.use('/health', healthRouter);
-
-// TODO: Turn on when ready
-// router.use('/systems', systemsRouter);
-// router.use('/plants', plantsRouter);
-// router.use('/tasks', tasksRouter);
+router.use('/', makeGardenRouter(getDb()));
 
 export default router;
