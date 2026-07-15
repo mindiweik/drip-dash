@@ -11,12 +11,19 @@ function App() {
   const [gardens, setGardens] = useState<GardenStatus[]>([]);
   const [chores, setChores] = useState<Chore[]>([]);
   const [plants, setPlants] = useState<PlantRow[]>([]);
+  const [degraded, setDegraded] = useState(false);
 
   const load = useCallback(async () => {
-    const [g, c, p] = await Promise.all([fetchStatus(), fetchChores(), fetchPlants()]);
-    setGardens(g);
-    setChores(c);
-    setPlants(p);
+    try {
+      const [g, c, p] = await Promise.all([fetchStatus(), fetchChores(), fetchPlants()]);
+      setGardens(g);
+      setChores(c);
+      setPlants(p);
+      setDegraded(false);
+    } catch (err) {
+      console.error('refresh failed:', err);
+      setDegraded(true);
+    }
   }, []);
 
   useEffect(() => {
@@ -26,13 +33,22 @@ function App() {
   }, [load]);
 
   const onComplete = async (id: number) => {
-    await completeChore(id);
-    await load();
+    try {
+      await completeChore(id);
+    } catch (err) {
+      console.error('refresh failed:', err);
+      setDegraded(true);
+    } finally {
+      await load();
+    }
   };
 
   return (
     <main className="mx-auto max-w-4xl space-y-8 p-6">
       <h1 className="text-3xl font-bold">Drip Dash</h1>
+      {degraded && (
+        <p className="text-sm text-amber-500">Backend unreachable, retrying every minute</p>
+      )}
       <StatusStrip gardens={gardens} />
       <section className="space-y-3">
         <h2 className="text-xl font-semibold">Break board</h2>
