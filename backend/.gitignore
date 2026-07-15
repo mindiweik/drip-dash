@@ -12,3 +12,6 @@ dist
 .DS_Store
 *.sw?
 .env
+
+# Database files
+drip-dash.db*
