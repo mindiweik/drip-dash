@@ -1,30 +1,48 @@
 import { Router } from 'express';
 import type Database from 'better-sqlite3';
 import { getLatestSnapshot } from '../db/snapshots.js';
-import { getOpenChores, completeChore } from '../care/chores.js';
+import { getOpenChores, completeChore, uncompleteChore, getChoresCompletedSince } from '../care/chores.js';
+import { listGardens } from '../db/gardens.js';
+import { listPlants, updatePlant } from '../db/plants.js';
+import {
+  getPlantTasks,
+  createPlantTask,
+  updatePlantTask,
+  deletePlantTask,
+} from '../care/plantTasks.js';
+import type { TaskKind } from '../care/plantTasks.js';
 
-const GARDYN_IDS = ['gardyn-1', 'gardyn-2'];
 const STALE_MINUTES = 45;
+const TASK_KINDS: TaskKind[] = ['pollinate', 'roots', 'trim', 'harvest', 'other'];
+
+function startOfLocalDay(d: Date): string {
+  const local = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  return local.toISOString();
+}
 
 export function makeGardenRouter(db: Database.Database, now: () => Date = () => new Date()): Router {
   const router = Router();
 
   router.get('/status', (_req, res) => {
-    const gardens = GARDYN_IDS.map((gardynId) => {
-      const snapshot = getLatestSnapshot(db, gardynId);
+    const gardens = listGardens(db).map((garden) => {
+      const snapshot = getLatestSnapshot(db, garden.id);
       let ageMinutes: number | null = null;
       let stale = true;
       if (snapshot) {
         ageMinutes = Math.round((now().getTime() - new Date(snapshot.takenAt).getTime()) / 60000);
         stale = ageMinutes > STALE_MINUTES;
       }
-      return { gardynId, snapshot, ageMinutes, stale };
+      return { gardynId: garden.id, name: garden.name, snapshot, ageMinutes, stale };
     });
     res.json({ gardens });
   });
 
   router.get('/chores', (_req, res) => {
-    res.json({ chores: getOpenChores(db) });
+    const at = now();
+    res.json({
+      chores: getOpenChores(db, at.toISOString()),
+      doneToday: getChoresCompletedSince(db, startOfLocalDay(at)),
+    });
   });
 
   router.post('/chores/:id/complete', (req, res) => {
@@ -32,30 +50,57 @@ export function makeGardenRouter(db: Database.Database, now: () => Date = () => 
     res.json({ ok: true });
   });
 
+  router.post('/chores/:id/uncomplete', (req, res) => {
+    uncompleteChore(db, Number(req.params.id));
+    res.json({ ok: true });
+  });
+
   router.get('/plants', (_req, res) => {
-    const rows = db.prepare('SELECT * FROM plants').all();
-    res.json({ plants: rows });
+    res.json({ plants: listPlants(db) });
   });
 
   router.put('/plants/:id', (req, res) => {
-    const id = Number(req.params.id);
-    const existing: any = db.prepare('SELECT * FROM plants WHERE id = ?').get(id);
-    if (!existing) {
-      res.status(404).json({ ok: false });
-      return;
+    const { name, variety, plantedAt, notes, careInstructions, about, uses } = req.body ?? {};
+    // Guard against null or empty name
+    if (name === null || name === '') {
+      return res.status(400).json({ error: 'name cannot be empty' });
     }
-    const body = req.body ?? {};
-    const name = body.name !== undefined ? body.name : existing.name;
-    const variety = body.variety !== undefined ? body.variety : existing.variety;
-    const planted_at = body.planted_at !== undefined ? body.planted_at : existing.planted_at;
-    const notes = body.notes !== undefined ? body.notes : existing.notes;
-    db.prepare('UPDATE plants SET name = ?, variety = ?, planted_at = ?, notes = ? WHERE id = ?').run(
-      name,
-      variety,
-      planted_at,
-      notes,
-      id,
-    );
+    const ok = updatePlant(db, Number(req.params.id), {
+      name, variety, plantedAt, notes, careInstructions, about, uses,
+    });
+    if (!ok) return res.status(404).json({ ok: false });
+    res.json({ ok: true });
+  });
+
+  router.get('/plants/:id/tasks', (req, res) => {
+    res.json({ tasks: getPlantTasks(db, Number(req.params.id)) });
+  });
+
+  router.post('/plants/:id/tasks', (req, res) => {
+    const { title, kind, dueAt } = req.body ?? {};
+    if (!title || typeof title !== 'string') return res.status(400).json({ error: 'title required' });
+    if (!TASK_KINDS.includes(kind)) return res.status(400).json({ error: 'invalid kind' });
+    try {
+      const task = createPlantTask(db, Number(req.params.id), { title, kind, dueAt }, now().toISOString());
+      res.json({ task });
+    } catch {
+      res.status(404).json({ error: 'plant not found' });
+    }
+  });
+
+  router.patch('/tasks/:id', (req, res) => {
+    const { title, kind, dueAt } = req.body ?? {};
+    if (kind !== undefined && !TASK_KINDS.includes(kind)) {
+      return res.status(400).json({ error: 'invalid kind' });
+    }
+    const ok = updatePlantTask(db, Number(req.params.id), { title, kind, dueAt });
+    if (!ok) return res.status(404).json({ ok: false });
+    res.json({ ok: true });
+  });
+
+  router.delete('/tasks/:id', (req, res) => {
+    const ok = deletePlantTask(db, Number(req.params.id));
+    if (!ok) return res.status(404).json({ ok: false });
     res.json({ ok: true });
   });
 

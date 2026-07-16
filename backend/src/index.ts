@@ -2,7 +2,10 @@ import express from 'express';
 import apiRouter from './routes/index.js';
 import { Server } from 'http';
 import { getDb } from './db/database.js';
+import { seedDefaultGardens } from './db/gardens.js';
 import { seedDefaultSchedules } from './care/chores.js';
+import { seedFakePlants } from './db/plants.js';
+import { seedFakePlantTasks } from './care/plantTasks.js';
 import { startPolling } from './poller/poller.js';
 import { GardynMockSource } from './datasources/GardynMockSource.js';
 import path from 'path';
@@ -22,7 +25,10 @@ app.use(express.static(frontendDist));
 
 function startServer() {
   const db = getDb();
+  seedDefaultGardens(db);
   seedDefaultSchedules(db);
+  seedFakePlants(db);
+  seedFakePlantTasks(db, new Date().toISOString());
   stopPolling = startPolling(db, new GardynMockSource());
   server = app.listen(PORT, () => {
     console.log(`Backend server running on http://localhost:${PORT}`);

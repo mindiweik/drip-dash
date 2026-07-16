@@ -2,16 +2,16 @@ import type Database from 'better-sqlite3';
 import type { GardynDataSource } from '../datasources/GardynDataSource.js';
 import { insertSnapshot } from '../db/snapshots.js';
 import { computeChores } from '../care/chores.js';
-
-const DEFAULT_IDS = ['gardyn-1', 'gardyn-2'];
+import { listGardens } from '../db/gardens.js';
 
 export async function pollOnce(
   db: Database.Database,
   source: GardynDataSource,
   now: string,
-  gardynIds: string[] = DEFAULT_IDS,
+  gardynIds?: string[],
 ): Promise<void> {
-  for (const gardynId of gardynIds) {
+  const ids = gardynIds ?? listGardens(db).map((g) => g.id);
+  for (const gardynId of ids) {
     try {
       const snap = await source.fetchSnapshot(gardynId);
       insertSnapshot(db, snap);

@@ -21,6 +21,13 @@ Phase 1 runs against a mock Gardyn data source (no hardware needed). See
 `docs/superpowers/specs/2026-07-06-drip-dash-revamp-design.md` for the roadmap:
 a real local data source is a separate later phase.
 
+## Features
+
+- Named gardens with tabbed per-garden pages for multi-system browsing
+- Column-based plant grid with color-coded task pills (harvest, trim, pollinate, etc.)
+- Tap any plant to open a modal with full details, care instructions, and editable per-plant task lists
+- Todo tab with filter chips (filter by plant or task kind) and undo button for quick un-completion of recent chores
+
 Production (single Node process serving API + built UI):
 
 ```bash

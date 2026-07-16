@@ -16,23 +16,38 @@ CREATE TABLE IF NOT EXISTS care_schedules (
   every_days INTEGER NOT NULL,
   last_done_at TEXT
 );
+CREATE TABLE IF NOT EXISTS gardens (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  type TEXT NOT NULL DEFAULT 'gardyn',
+  cols INTEGER NOT NULL,
+  positions_per_col INTEGER NOT NULL
+);
 CREATE TABLE IF NOT EXISTS chores (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   gardyn_id TEXT,
+  plant_id INTEGER,
+  schedule_id INTEGER,
   title TEXT NOT NULL,
   source TEXT NOT NULL,
+  kind TEXT,
+  due_at TEXT,
   created_at TEXT NOT NULL,
-  completed_at TEXT,
-  schedule_id INTEGER
+  completed_at TEXT
 );
 CREATE TABLE IF NOT EXISTS plants (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   gardyn_id TEXT NOT NULL,
-  slot INTEGER NOT NULL,
+  col INTEGER NOT NULL,
+  position INTEGER NOT NULL,
   name TEXT NOT NULL,
   variety TEXT,
   planted_at TEXT,
-  notes TEXT
+  notes TEXT,
+  care_instructions TEXT,
+  about TEXT,
+  uses TEXT,
+  UNIQUE(gardyn_id, col, position)
 );
 `;
 

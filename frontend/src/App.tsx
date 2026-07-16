@@ -1,24 +1,31 @@
 import { useEffect, useState, useCallback } from 'react';
-import { fetchStatus, fetchChores, fetchPlants, completeChore } from './api';
-import type { GardenStatus, Chore, PlantRow } from './api';
-import StatusStrip from './components/StatusStrip';
+import { fetchStatus, fetchChores, fetchPlants, completeChore, uncompleteChore } from './api';
+import type { GardenStatus, Chore, Plant } from './api';
+import GardenPage from './components/GardenPage';
 import BreakBoard from './components/BreakBoard';
-import PlantGrid from './components/PlantGrid';
+import PlantModal from './components/PlantModal';
 
 const REFRESH_MS = 60_000;
+type Tab = 'gardyn' | 'todo';
 
 function App() {
   const [gardens, setGardens] = useState<GardenStatus[]>([]);
   const [chores, setChores] = useState<Chore[]>([]);
-  const [plants, setPlants] = useState<PlantRow[]>([]);
+  const [doneToday, setDoneToday] = useState<Chore[]>([]);
+  const [plants, setPlants] = useState<Plant[]>([]);
   const [degraded, setDegraded] = useState(false);
+  const [tab, setTab] = useState<Tab>('gardyn');
+  const [gardenIndex, setGardenIndex] = useState(0);
+  const [selectedPlant, setSelectedPlant] = useState<Plant | null>(null);
 
   const load = useCallback(async () => {
     try {
       const [g, c, p] = await Promise.all([fetchStatus(), fetchChores(), fetchPlants()]);
       setGardens(g);
-      setChores(c);
+      setChores(c.chores);
+      setDoneToday(c.doneToday);
       setPlants(p);
+      setSelectedPlant((cur) => (cur ? p.find((x) => x.id === cur.id) ?? null : null));
       setDegraded(false);
     } catch (err) {
       console.error('refresh failed:', err);
@@ -36,28 +43,99 @@ function App() {
     try {
       await completeChore(id);
     } catch (err) {
-      console.error('refresh failed:', err);
+      console.error('complete failed:', err);
       setDegraded(true);
     } finally {
       await load();
     }
   };
 
+  const onUndo = async (id: number) => {
+    try {
+      await uncompleteChore(id);
+    } catch (err) {
+      console.error('undo failed:', err);
+      setDegraded(true);
+    } finally {
+      await load();
+    }
+  };
+
+  const garden = gardens[gardenIndex] ?? null;
+
   return (
-    <main className="mx-auto max-w-4xl space-y-8 p-6">
-      <h1 className="text-3xl font-bold">Drip Dash</h1>
-      {degraded && (
-        <p className="text-sm text-amber-500">Backend unreachable, retrying every minute</p>
+    <main className="mx-auto flex min-h-screen max-w-4xl flex-col p-6 pb-24">
+      <div className="flex items-baseline justify-between">
+        <h1 className="text-3xl font-bold">Drip Dash</h1>
+        {degraded && (
+          <p className="text-sm text-amber-500">Backend unreachable, retrying every minute</p>
+        )}
+      </div>
+
+      <div className="mt-6 flex-1">
+        {tab === 'gardyn' && garden && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <button
+                onClick={() => setGardenIndex((i) => (i - 1 + gardens.length) % gardens.length)}
+                className="rounded-xl bg-slate-800 px-4 py-2 text-lg hover:bg-slate-700"
+                aria-label="Previous garden"
+              >
+                &lt;
+              </button>
+              <span className="text-sm text-slate-500">
+                {gardenIndex + 1} of {gardens.length}
+              </span>
+              <button
+                onClick={() => setGardenIndex((i) => (i + 1) % gardens.length)}
+                className="rounded-xl bg-slate-800 px-4 py-2 text-lg hover:bg-slate-700"
+                aria-label="Next garden"
+              >
+                &gt;
+              </button>
+            </div>
+            <GardenPage
+              garden={garden}
+              plants={plants}
+              dueChores={chores}
+              onPlantClick={setSelectedPlant}
+            />
+          </div>
+        )}
+        {tab === 'todo' && (
+          <BreakBoard
+            gardens={gardens}
+            chores={chores}
+            doneToday={doneToday}
+            onComplete={onComplete}
+            onUndo={onUndo}
+          />
+        )}
+      </div>
+
+      {selectedPlant && (
+        <PlantModal
+          plant={selectedPlant}
+          onClose={() => setSelectedPlant(null)}
+          onChanged={() => void load()}
+        />
       )}
-      <StatusStrip gardens={gardens} />
-      <section className="space-y-3">
-        <h2 className="text-xl font-semibold">Break board</h2>
-        <BreakBoard chores={chores} onComplete={onComplete} />
-      </section>
-      <section className="space-y-3">
-        <h2 className="text-xl font-semibold">Plants</h2>
-        <PlantGrid plants={plants} />
-      </section>
+
+      <nav className="fixed inset-x-0 bottom-0 border-t border-slate-800 bg-slate-900/95">
+        <div className="mx-auto flex max-w-4xl">
+          {(['gardyn', 'todo'] as Tab[]).map((t) => (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              className={`flex-1 py-4 text-center text-sm font-medium uppercase tracking-wide ${
+                tab === t ? 'text-emerald-400' : 'text-slate-500 hover:text-slate-300'
+              }`}
+            >
+              {t === 'gardyn' ? 'Gardyn' : 'To do'}
+            </button>
+          ))}
+        </div>
+      </nav>
     </main>
   );
 }
