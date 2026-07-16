@@ -238,4 +238,39 @@ describe('garden routes', () => {
     expect(patched.status).toBe(400);
     expect(patched.body.error).toBe('invalid kind');
   });
+
+  it('PATCH /api/tasks/:id rejects non-plant chores with 404', async () => {
+    const { app, db } = appWith(':memory:routes-nonplant-patch');
+    const insert = db
+      .prepare(
+        'INSERT INTO chores (gardyn_id, title, source, created_at, completed_at) VALUES (?, ?, ?, ?, NULL)',
+      )
+      .run('gardyn-1', 'Tank clean', 'schedule', '2026-07-06T12:00:00.000Z');
+    const choreId = insert.lastInsertRowid;
+
+    const patched = await request(app)
+      .patch(`/api/tasks/${choreId}`)
+      .send({ title: 'hijacked' });
+    expect(patched.status).toBe(404);
+
+    const row: any = db.prepare('SELECT * FROM chores WHERE id = ?').get(choreId);
+    expect(row.title).toBe('Tank clean');
+  });
+
+  it('DELETE /api/tasks/:id rejects non-plant chores with 404', async () => {
+    const { app, db } = appWith(':memory:routes-nonplant-delete');
+    const insert = db
+      .prepare(
+        'INSERT INTO chores (gardyn_id, title, source, created_at, completed_at) VALUES (?, ?, ?, ?, NULL)',
+      )
+      .run('gardyn-1', 'Tank clean', 'schedule', '2026-07-06T12:00:00.000Z');
+    const choreId = insert.lastInsertRowid;
+
+    const deleted = await request(app).delete(`/api/tasks/${choreId}`);
+    expect(deleted.status).toBe(404);
+
+    const row: any = db.prepare('SELECT * FROM chores WHERE id = ?').get(choreId);
+    expect(row).toBeDefined();
+    expect(row.title).toBe('Tank clean');
+  });
 });
