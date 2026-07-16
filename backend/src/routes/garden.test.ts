@@ -61,8 +61,8 @@ describe('garden routes', () => {
   it('GET /api/plants returns seeded rows', async () => {
     const { app, db } = appWith(':memory:routes-4');
     db.prepare(
-      'INSERT INTO plants (gardyn_id, slot, name, variety, planted_at, notes) VALUES (?, ?, ?, ?, ?, ?)',
-    ).run('gardyn-1', 1, 'Basil', 'Genovese', '2026-07-01T00:00:00.000Z', 'thriving');
+      'INSERT INTO plants (gardyn_id, col, position, name, variety, planted_at, notes) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    ).run('gardyn-1', 1, 1, 'Basil', 'Genovese', '2026-07-01T00:00:00.000Z', 'thriving');
     const res = await request(app).get('/api/plants');
     expect(res.status).toBe(200);
     expect(res.body.plants.length).toBe(1);
@@ -73,8 +73,8 @@ describe('garden routes', () => {
   it('PUT /api/plants/:id partial update preserves unsent fields', async () => {
     const { app, db } = appWith(':memory:routes-5');
     const insert = db
-      .prepare('INSERT INTO plants (gardyn_id, slot, name, variety, planted_at, notes) VALUES (?, ?, ?, ?, ?, ?)')
-      .run('gardyn-1', 1, 'Basil', 'Genovese', '2026-07-01T00:00:00.000Z', 'old notes');
+      .prepare('INSERT INTO plants (gardyn_id, col, position, name, variety, planted_at, notes) VALUES (?, ?, ?, ?, ?, ?, ?)')
+      .run('gardyn-1', 1, 1, 'Basil', 'Genovese', '2026-07-01T00:00:00.000Z', 'old notes');
     const id = insert.lastInsertRowid;
 
     const res = await request(app).put(`/api/plants/${id}`).send({ notes: 'new' });
