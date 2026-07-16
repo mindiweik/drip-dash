@@ -121,6 +121,8 @@ function App() {
           plant={selectedPlant}
           onClose={() => setSelectedPlant(null)}
           onChanged={() => void load()}
+          gardens={gardens}
+          allPlants={plants}
         />
       )}
 
