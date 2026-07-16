@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { fetchStatus, fetchChores, fetchPlants, completeChore } from './api';
+import { fetchStatus, fetchChores, fetchPlants, completeChore, uncompleteChore } from './api';
 import type { GardenStatus, Chore, Plant } from './api';
 import GardenPage from './components/GardenPage';
 import BreakBoard from './components/BreakBoard';
@@ -11,6 +11,7 @@ type Tab = 'gardyn' | 'todo';
 function App() {
   const [gardens, setGardens] = useState<GardenStatus[]>([]);
   const [chores, setChores] = useState<Chore[]>([]);
+  const [doneToday, setDoneToday] = useState<Chore[]>([]);
   const [plants, setPlants] = useState<Plant[]>([]);
   const [degraded, setDegraded] = useState(false);
   const [tab, setTab] = useState<Tab>('gardyn');
@@ -22,6 +23,7 @@ function App() {
       const [g, c, p] = await Promise.all([fetchStatus(), fetchChores(), fetchPlants()]);
       setGardens(g);
       setChores(c.chores);
+      setDoneToday(c.doneToday);
       setPlants(p);
       setSelectedPlant((cur) => (cur ? p.find((x) => x.id === cur.id) ?? null : null));
       setDegraded(false);
@@ -42,6 +44,17 @@ function App() {
       await completeChore(id);
     } catch (err) {
       console.error('complete failed:', err);
+      setDegraded(true);
+    } finally {
+      await load();
+    }
+  };
+
+  const onUndo = async (id: number) => {
+    try {
+      await uncompleteChore(id);
+    } catch (err) {
+      console.error('undo failed:', err);
       setDegraded(true);
     } finally {
       await load();
@@ -89,7 +102,15 @@ function App() {
             />
           </div>
         )}
-        {tab === 'todo' && <BreakBoard chores={chores} onComplete={onComplete} />}
+        {tab === 'todo' && (
+          <BreakBoard
+            gardens={gardens}
+            chores={chores}
+            doneToday={doneToday}
+            onComplete={onComplete}
+            onUndo={onUndo}
+          />
+        )}
       </div>
 
       {selectedPlant && (
