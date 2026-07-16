@@ -47,8 +47,11 @@ CREATE TABLE IF NOT EXISTS plants (
   care_instructions TEXT,
   about TEXT,
   uses TEXT,
-  UNIQUE(gardyn_id, col, position)
+  removed_at TEXT,
+  removed_reason TEXT
 );
+CREATE UNIQUE INDEX IF NOT EXISTS idx_plants_active_slot
+  ON plants (gardyn_id, col, position) WHERE removed_at IS NULL;
 `;
 
 export function getDb(path?: string): Database.Database {

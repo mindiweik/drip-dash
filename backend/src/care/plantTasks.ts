@@ -52,7 +52,7 @@ export function createPlantTask(
   now: string,
 ): PlantTask {
   const plant = getPlant(db, plantId);
-  if (!plant) throw new Error(`plant ${plantId} not found`);
+  if (!plant || plant.removedAt) throw new Error(`plant ${plantId} not found or archived`);
   const result = db
     .prepare(
       `INSERT INTO chores (gardyn_id, plant_id, title, source, kind, due_at, created_at, completed_at)
