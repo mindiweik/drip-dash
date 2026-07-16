@@ -8,6 +8,13 @@ function choreLabel(c: Chore): string {
   return c.plantName ? `${c.plantName}: ${c.title}` : c.title;
 }
 
+// Garden-level chores get their own colors: cleaning schedules violet, water top-ups cyan.
+function choreStyle(c: Chore): string {
+  if (c.kind) return KIND_STYLES[c.kind];
+  if (c.source === 'data-trigger') return 'bg-cyan-700 hover:bg-cyan-600';
+  return 'bg-violet-800 hover:bg-violet-700';
+}
+
 function matches(c: Chore, filter: Filter): boolean {
   if (filter === 'all') return true;
   if (filter === 'plants') return c.plantId != null;
@@ -65,7 +72,7 @@ export default function BreakBoard({
               key={c.id}
               onClick={() => onComplete(c.id)}
               className={`rounded-2xl px-6 py-4 text-lg font-medium ${
-                c.kind ? KIND_STYLES[c.kind] : 'bg-emerald-700 hover:bg-emerald-600'
+                choreStyle(c)
               }`}
             >
               {choreLabel(c)}

@@ -4,7 +4,7 @@ import StatusCard from './StatusCard';
 export const KIND_STYLES: Record<TaskKind, string> = {
   pollinate: 'bg-amber-700 hover:bg-amber-600',
   roots: 'bg-sky-800 hover:bg-sky-700',
-  trim: 'bg-violet-800 hover:bg-violet-700',
+  trim: 'bg-yellow-600 hover:bg-yellow-500',
   harvest: 'bg-emerald-700 hover:bg-emerald-600',
   other: 'bg-slate-600 hover:bg-slate-500',
 };
