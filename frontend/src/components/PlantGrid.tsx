@@ -1,6 +1,6 @@
-import type { PlantRow } from '../api';
+import type { Plant } from '../api';
 
-export default function PlantGrid({ plants }: { plants: PlantRow[] }) {
+export default function PlantGrid({ plants }: { plants: Plant[] }) {
   if (plants.length === 0) {
     return <p className="text-slate-500">No plants added yet.</p>;
   }

@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { fetchStatus, fetchChores, fetchPlants, completeChore } from './api';
-import type { GardenStatus, Chore, PlantRow } from './api';
+import type { GardenStatus, Chore, Plant } from './api';
 import StatusStrip from './components/StatusStrip';
 import BreakBoard from './components/BreakBoard';
 import PlantGrid from './components/PlantGrid';
@@ -10,12 +10,12 @@ const REFRESH_MS = 60_000;
 function App() {
   const [gardens, setGardens] = useState<GardenStatus[]>([]);
   const [chores, setChores] = useState<Chore[]>([]);
-  const [plants, setPlants] = useState<PlantRow[]>([]);
+  const [plants, setPlants] = useState<Plant[]>([]);
   const [degraded, setDegraded] = useState(false);
 
   const load = useCallback(async () => {
     try {
-      const [g, c, p] = await Promise.all([fetchStatus(), fetchChores(), fetchPlants()]);
+      const [g, { chores: c }, p] = await Promise.all([fetchStatus(), fetchChores(), fetchPlants()]);
       setGardens(g);
       setChores(c);
       setPlants(p);
