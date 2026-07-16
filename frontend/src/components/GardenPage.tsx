@@ -26,11 +26,13 @@ export default function GardenPage({
   plants,
   dueChores,
   onPlantClick,
+  onEmptySlotClick,
 }: {
   garden: GardenStatus;
   plants: Plant[];
   dueChores: Chore[];
   onPlantClick: (plant: Plant) => void;
+  onEmptySlotClick: (col: number, position: number) => void;
 }) {
   const mine = plants.filter((p) => p.gardynId === garden.gardynId);
   const dueKindByPlant = new Map<number, TaskKind>();
@@ -53,12 +55,13 @@ export default function GardenPage({
               const plant = mine.find((p) => p.col === col && p.position === position);
               if (!plant) {
                 return (
-                  <div
+                  <button
                     key={position}
-                    className="rounded-xl border border-dashed border-slate-800 px-3 py-2 text-center text-xs text-slate-700"
+                    onClick={() => onEmptySlotClick(col, position)}
+                    className="w-full rounded-xl border border-dashed border-slate-800 px-3 py-2 text-center text-xs text-slate-700 hover:border-slate-600 hover:text-slate-500"
                   >
                     {position}
-                  </div>
+                  </button>
                 );
               }
               const kind = dueKindByPlant.get(plant.id);
