@@ -27,6 +27,7 @@ a real local data source is a separate later phase.
 - Column-based plant grid with color-coded task pills (harvest, trim, pollinate, etc.)
 - Tap any plant to open a modal with full details, care instructions, and editable per-plant task lists
 - Todo tab with filter chips (filter by plant or task kind) and undo button for quick un-completion of recent chores
+- Full plant lifecycle: tap an empty slot to add a new plant, move or swap plants between slots from the modal, or remove a plant with a removal reason and keep its history
 
 Production (single Node process serving API + built UI):
 
