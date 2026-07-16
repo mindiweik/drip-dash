@@ -2,23 +2,23 @@ import { Router } from 'express';
 import type Database from 'better-sqlite3';
 import { getLatestSnapshot } from '../db/snapshots.js';
 import { getOpenChores, completeChore } from '../care/chores.js';
+import { listGardens } from '../db/gardens.js';
 
-const GARDYN_IDS = ['gardyn-1', 'gardyn-2'];
 const STALE_MINUTES = 45;
 
 export function makeGardenRouter(db: Database.Database, now: () => Date = () => new Date()): Router {
   const router = Router();
 
   router.get('/status', (_req, res) => {
-    const gardens = GARDYN_IDS.map((gardynId) => {
-      const snapshot = getLatestSnapshot(db, gardynId);
+    const gardens = listGardens(db).map((garden) => {
+      const snapshot = getLatestSnapshot(db, garden.id);
       let ageMinutes: number | null = null;
       let stale = true;
       if (snapshot) {
         ageMinutes = Math.round((now().getTime() - new Date(snapshot.takenAt).getTime()) / 60000);
         stale = ageMinutes > STALE_MINUTES;
       }
-      return { gardynId, snapshot, ageMinutes, stale };
+      return { gardynId: garden.id, name: garden.name, snapshot, ageMinutes, stale };
     });
     res.json({ gardens });
   });

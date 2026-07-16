@@ -4,6 +4,7 @@ import express from 'express';
 import { getDb } from '../db/database.js';
 import { insertSnapshot } from '../db/snapshots.js';
 import { makeGardenRouter } from './garden.js';
+import { seedDefaultGardens } from '../db/gardens.js';
 import type { GardynSnapshot } from '@shared/types';
 
 function appWith(dbKey: string) {
@@ -26,6 +27,7 @@ const snap: GardynSnapshot = {
 describe('garden routes', () => {
   it('GET /api/status reports snapshot age and stale=false when recent', async () => {
     const { app, db } = appWith(':memory:routes-1');
+    seedDefaultGardens(db);
     insertSnapshot(db, snap);
     const res = await request(app).get('/api/status');
     expect(res.status).toBe(200);
@@ -49,7 +51,8 @@ describe('garden routes', () => {
   });
 
   it('GET /api/status reports snapshot null and stale=true when there is no snapshot', async () => {
-    const { app } = appWith(':memory:routes-3');
+    const { app, db } = appWith(':memory:routes-3');
+    seedDefaultGardens(db);
     const res = await request(app).get('/api/status');
     expect(res.status).toBe(200);
     const g1 = res.body.gardens.find((g: any) => g.gardynId === 'gardyn-1');
@@ -93,5 +96,13 @@ describe('garden routes', () => {
     const res = await request(app).put('/api/plants/999').send({ notes: 'x' });
     expect(res.status).toBe(404);
     expect(res.body.ok).toBe(false);
+  });
+
+  it('GET /api/status includes garden display names', async () => {
+    const { app, db } = appWith(':memory:routes-names');
+    seedDefaultGardens(db);
+    const res = await request(app).get('/api/status');
+    const names = res.body.gardens.map((g: any) => g.name);
+    expect(names).toEqual(['Weik & Wander', 'Mystical Menagerie']);
   });
 });

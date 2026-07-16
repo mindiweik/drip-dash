@@ -1,10 +1,10 @@
 import type Database from 'better-sqlite3';
 import { getLatestSnapshot } from '../db/snapshots.js';
+import { listGardens } from '../db/gardens.js';
 
 export { seedDefaultSchedules } from './seed.js';
 
 export const WATER_LOW_THRESHOLD = 45;
-const GARDYN_IDS = ['gardyn-1', 'gardyn-2'];
 
 export interface Chore {
   id: number;
@@ -107,10 +107,10 @@ function daysBetween(aIso: string, bIso: string): number {
 
 export function computeChores(db: Database.Database, now: string): void {
   // Data-driven: low water per gardyn.
-  for (const gardynId of GARDYN_IDS) {
-    const snap = getLatestSnapshot(db, gardynId);
+  for (const garden of listGardens(db)) {
+    const snap = getLatestSnapshot(db, garden.id);
     if (snap && snap.waterLevelPct < WATER_LOW_THRESHOLD) {
-      insertChore(db, gardynId, `Top up water + plant food (${gardynId})`, 'data-trigger', now);
+      insertChore(db, garden.id, `Top up water + plant food (${garden.id})`, 'data-trigger', now);
     }
   }
 

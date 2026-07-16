@@ -3,6 +3,7 @@ import { getDb } from '../db/database.js';
 import { getLatestSnapshot } from '../db/snapshots.js';
 import { getOpenChores } from '../care/chores.js';
 import { WATER_LOW_THRESHOLD } from '../care/chores.js';
+import { seedDefaultGardens } from '../db/gardens.js';
 import { GardynMockSource } from '../datasources/GardynMockSource.js';
 import { pollOnce } from './poller.js';
 import type { GardynSnapshot } from '@shared/types';
@@ -10,6 +11,7 @@ import type { GardynSnapshot } from '@shared/types';
 describe('pollOnce', () => {
   it('writes a snapshot for each gardyn and runs chore computation', async () => {
     const db = getDb(':memory:poller-1');
+    seedDefaultGardens(db);
     const fixedSource = {
       fetchSnapshot: async (id: string): Promise<GardynSnapshot> => {
         const takenAt = '2026-07-06T12:00:00.000Z';
@@ -45,6 +47,7 @@ describe('pollOnce', () => {
 
   it('does not throw if the source fails for one gardyn', async () => {
     const db = getDb(':memory:poller-2');
+    seedDefaultGardens(db);
     const flaky = {
       fetchSnapshot: async (id: string) => {
         if (id === 'gardyn-2') throw new Error('boom');

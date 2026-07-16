@@ -1,7 +1,5 @@
 import type Database from 'better-sqlite3';
-
-// Every gardyn gets this same baseline set of recurring care schedules.
-const GARDYN_IDS = ['gardyn-1', 'gardyn-2'];
+import { listGardens } from '../db/gardens.js';
 
 // Mirrors Mindi's real Gardyn routine (plant food rides along with water
 // top-ups, so it lives on the data-triggered chore, not a schedule here).
@@ -20,9 +18,9 @@ export function seedDefaultSchedules(db: Database.Database): void {
   const insert = db.prepare(
     'INSERT INTO care_schedules (gardyn_id, name, every_days, last_done_at) VALUES (?, ?, ?, NULL)',
   );
-  for (const gardynId of GARDYN_IDS) {
+  for (const garden of listGardens(db)) {
     for (const schedule of DEFAULT_SCHEDULES) {
-      insert.run(gardynId, schedule.name, schedule.everyDays);
+      insert.run(garden.id, schedule.name, schedule.everyDays);
     }
   }
 }
