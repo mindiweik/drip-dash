@@ -5,6 +5,8 @@ import {
   computeChores,
   getOpenChores,
   completeChore,
+  uncompleteChore,
+  getChoresCompletedSince,
   seedDefaultSchedules,
   WATER_LOW_THRESHOLD,
 } from './chores.js';
@@ -130,5 +132,33 @@ describe('computeChores', () => {
     insertSnapshot(db, snap({ gardynId: 'gardyn-3', waterLevelPct: 10 }));
     computeChores(db, '2026-07-15T12:00:00.000Z');
     expect(getOpenChores(db).some((c) => c.gardynId === 'gardyn-3')).toBe(true);
+  });
+
+  it('uncompleting a schedule chore clears the schedule last_done_at', () => {
+    const db = freshDb();
+    seedDefaultGardens(db);
+    db.prepare(
+      'INSERT INTO care_schedules (gardyn_id, name, every_days, last_done_at) VALUES (?, ?, ?, ?)',
+    ).run('gardyn-1', 'Tank clean', 56, '2026-05-01T12:00:00.000Z');
+    computeChores(db, '2026-07-15T12:00:00.000Z');
+    const chore = getOpenChores(db).find((c) => c.title.includes('Tank clean'))!;
+    completeChore(db, chore.id, '2026-07-15T13:00:00.000Z');
+    uncompleteChore(db, chore.id);
+    expect(getOpenChores(db).some((c) => c.id === chore.id)).toBe(true);
+    const sched: any = db.prepare('SELECT last_done_at FROM care_schedules').get();
+    expect(sched.last_done_at).toBeNull();
+  });
+
+  it('getChoresCompletedSince returns todays completions newest first', () => {
+    const db = freshDb();
+    seedDefaultGardens(db);
+    insertSnapshot(db, snap({ waterLevelPct: 10 }));
+    computeChores(db, '2026-07-15T12:00:00.000Z');
+    const chore = getOpenChores(db)[0];
+    completeChore(db, chore.id, '2026-07-15T14:00:00.000Z');
+    const done = getChoresCompletedSince(db, '2026-07-15T00:00:00.000Z');
+    expect(done).toHaveLength(1);
+    expect(done[0].id).toBe(chore.id);
+    expect(getChoresCompletedSince(db, '2026-07-16T00:00:00.000Z')).toHaveLength(0);
   });
 });

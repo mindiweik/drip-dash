@@ -5,6 +5,7 @@ import { getDb } from './db/database.js';
 import { seedDefaultGardens } from './db/gardens.js';
 import { seedDefaultSchedules } from './care/chores.js';
 import { seedFakePlants } from './db/plants.js';
+import { seedFakePlantTasks } from './care/plantTasks.js';
 import { startPolling } from './poller/poller.js';
 import { GardynMockSource } from './datasources/GardynMockSource.js';
 import path from 'path';
@@ -27,6 +28,7 @@ function startServer() {
   seedDefaultGardens(db);
   seedDefaultSchedules(db);
   seedFakePlants(db);
+  seedFakePlantTasks(db, new Date().toISOString());
   stopPolling = startPolling(db, new GardynMockSource());
   server = app.listen(PORT, () => {
     console.log(`Backend server running on http://localhost:${PORT}`);
