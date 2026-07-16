@@ -106,6 +106,7 @@ Usage finding: tapping a chore completes it instantly with no trace or undo (Min
 6. ToDo filters: **chips now** (All / W&W / MM / Plants).
 7. Demo plants: **invented is fine**.
 8. Plant photos: **defer to v1**.
+9. (2026-07-16, post-review) Completing a future-dated task early via the plant modal **does show in the ToDo tab's "Done today" strip** with its Undo, even though the task never appeared on the open board. Completing ahead of schedule is legitimate and should be visible.
 
 ## Constraints carried forward
 
