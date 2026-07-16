@@ -46,6 +46,17 @@ describe('plants repo', () => {
     expect(after.careInstructions).toBe('Trim weekly');
     expect(updatePlant(db, 9999, { notes: 'x' })).toBe(false);
   });
+
+  it('updatePlant refuses archived plants', () => {
+    const db = getDb(':memory:plants-3');
+    db.prepare(
+      "INSERT INTO plants (gardyn_id, col, position, name, removed_at, removed_reason) VALUES ('gardyn-1', 1, 1, 'Basil', '2026-07-16T12:00:00.000Z', 'harvested')",
+    ).run();
+    const archived: any = db.prepare('SELECT id FROM plants').get();
+    expect(updatePlant(db, archived.id, { notes: 'x' })).toBe(false);
+    const row: any = db.prepare('SELECT notes FROM plants WHERE id = ?').get(archived.id);
+    expect(row.notes).toBeNull();
+  });
 });
 
 describe('plant lifecycle', () => {

@@ -77,7 +77,7 @@ export interface PlantPatch {
 
 export function updatePlant(db: Database.Database, id: number, patch: PlantPatch): boolean {
   const existing = getPlant(db, id);
-  if (!existing) return false;
+  if (!existing || existing.removedAt) return false;
   const merged = {
     name: patch.name !== undefined ? patch.name : existing.name,
     variety: patch.variety !== undefined ? patch.variety : existing.variety,
