@@ -3,6 +3,7 @@ import { fetchStatus, fetchChores, fetchPlants, completeChore } from './api';
 import type { GardenStatus, Chore, Plant } from './api';
 import GardenPage from './components/GardenPage';
 import BreakBoard from './components/BreakBoard';
+import PlantModal from './components/PlantModal';
 
 const REFRESH_MS = 60_000;
 type Tab = 'gardyn' | 'todo';
@@ -91,11 +92,12 @@ function App() {
         {tab === 'todo' && <BreakBoard chores={chores} onComplete={onComplete} />}
       </div>
 
-      {/* Placeholder until Task 8 adds the plant detail modal. */}
       {selectedPlant && (
-        <p className="fixed bottom-20 left-1/2 -translate-x-1/2 rounded-full bg-slate-800 px-4 py-1 text-xs text-slate-300">
-          Selected: {selectedPlant.name}
-        </p>
+        <PlantModal
+          plant={selectedPlant}
+          onClose={() => setSelectedPlant(null)}
+          onChanged={() => void load()}
+        />
       )}
 
       <nav className="fixed inset-x-0 bottom-0 border-t border-slate-800 bg-slate-900/95">
