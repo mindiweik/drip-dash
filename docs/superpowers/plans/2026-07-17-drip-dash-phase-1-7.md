@@ -1147,7 +1147,7 @@ export async function clearDemoData(): Promise<void> {
 
 - [ ] **Step 3: Typecheck**
 
-Run: `cd frontend && npx tsc --noEmit`
+Run: `cd frontend && npx tsc -b --noEmit`
 Expected: errors ONLY in `AddPlantModal.tsx` / `PlantModal.tsx` (they still pass the old fields) — those are fixed in Tasks 6-7. If errors appear elsewhere, fix them here.
 
 - [ ] **Step 4: Commit**
@@ -1407,7 +1407,7 @@ export default function AddPlantModal({
 
 - [ ] **Step 2: Typecheck**
 
-Run: `cd frontend && npx tsc --noEmit`
+Run: `cd frontend && npx tsc -b --noEmit`
 Expected: remaining errors only in `PlantModal.tsx` and `App.tsx` (fixed in Tasks 7-8).
 
 - [ ] **Step 3: Commit**
@@ -1582,7 +1582,7 @@ Replace the details form block (the `<div className="mt-4 space-y-2">` containin
           <div className="rounded-xl bg-slate-800/60 p-3 text-sm text-slate-300">
             <div className="flex items-center justify-between">
               <span className="font-medium text-slate-100">
-                {plant.name}{plant.variety ? ` — ${plant.variety}` : ''}
+                {plant.name}{plant.variety ? `, ${plant.variety}` : ''}
               </span>
               <button
                 onClick={() => setEditingVariety(true)}
@@ -1626,7 +1626,7 @@ At the end of the component, render the edit-variety modal. Just before the fina
 
 - [ ] **Step 3: Typecheck**
 
-Run: `cd frontend && npx tsc --noEmit`
+Run: `cd frontend && npx tsc -b --noEmit`
 Expected: remaining errors only in `App.tsx` (AddPlantModal now needs `catalog`/`onCatalogChanged` props) — fixed in Task 8.
 
 - [ ] **Step 4: Commit**
