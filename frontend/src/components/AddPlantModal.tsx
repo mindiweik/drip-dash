@@ -153,7 +153,7 @@ export default function AddPlantModal({
                     selectedId === c.id ? 'bg-emerald-800 text-emerald-100' : 'bg-slate-800 hover:bg-slate-700'
                   }`}
                 >
-                  {c.name}{c.variety ? ` — ${c.variety}` : ''}
+                  {c.name}{c.variety ? `, ${c.variety}` : ''}
                 </button>
               ))}
             </div>
