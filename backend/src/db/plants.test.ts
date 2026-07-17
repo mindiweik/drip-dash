@@ -81,6 +81,13 @@ describe('listPlants', () => {
   });
 });
 
+function addOpenChore(gardynId: string, plantId: number): void {
+  db.prepare(
+    `INSERT INTO chores (gardyn_id, plant_id, title, source, created_at)
+     VALUES (?, ?, 'Trim', 'manual', '2026-07-16T10:00:00.000Z')`,
+  ).run(gardynId, plantId);
+}
+
 describe('movePlant', () => {
   it('moves into an empty slot', () => {
     const cid = basil();
@@ -99,6 +106,87 @@ describe('movePlant', () => {
     expect(movePlant(db, a.id, { gardynId: 'gardyn-1', col: 1, position: 2 })).toBe('swapped');
     expect(getPlant(db, a.id)!.position).toBe(2);
     expect(getPlant(db, b.id)!.position).toBe(1);
+  });
+
+  it('returns missing for an unknown id and for an already-archived plant', () => {
+    const cid = basil();
+    const p = createPlant(db, { gardynId: 'gardyn-1', col: 1, position: 1, catalogId: cid });
+    expect(movePlant(db, 9999, { gardynId: 'gardyn-1', col: 1, position: 2 })).toBe('missing');
+    archivePlant(db, p.id, 'other', '2026-07-16T12:00:00.000Z');
+    expect(movePlant(db, p.id, { gardynId: 'gardyn-1', col: 1, position: 2 })).toBe('missing');
+  });
+
+  it('returns invalid for an out-of-geometry target and for a same-slot no-op', () => {
+    const cid = basil();
+    const p = createPlant(db, { gardynId: 'gardyn-1', col: 1, position: 1, catalogId: cid });
+    expect(movePlant(db, p.id, { gardynId: 'gardyn-1', col: 9, position: 1 })).toBe('invalid');
+    expect(movePlant(db, p.id, { gardynId: 'gardyn-1', col: 1, position: 1 })).toBe('invalid');
+  });
+
+  it('relocates to an empty slot and open chores follow the garden', () => {
+    const cid = basil();
+    const p = createPlant(db, { gardynId: 'gardyn-1', col: 1, position: 1, catalogId: cid });
+    addOpenChore(p.gardynId, p.id);
+    expect(movePlant(db, p.id, { gardynId: 'gardyn-2', col: 3, position: 10 })).toBe('moved');
+    const moved = getPlant(db, p.id)!;
+    expect([moved.gardynId, moved.col, moved.position]).toEqual(['gardyn-2', 3, 10]);
+    const chore: any = db.prepare('SELECT gardyn_id FROM chores WHERE plant_id = ?').get(p.id);
+    expect(chore.gardyn_id).toBe('gardyn-2');
+  });
+
+  it('swaps atomically and both plants open chores follow their new gardens', () => {
+    const cid = basil();
+    const a = createPlant(db, { gardynId: 'gardyn-1', col: 1, position: 1, catalogId: cid });
+    const b = createPlant(db, { gardynId: 'gardyn-2', col: 2, position: 5, catalogId: cid });
+    addOpenChore(b.gardynId, b.id);
+    expect(movePlant(db, a.id, { gardynId: 'gardyn-2', col: 2, position: 5 })).toBe('swapped');
+    const A = getPlant(db, a.id)!;
+    const B = getPlant(db, b.id)!;
+    expect([A.gardynId, A.col, A.position]).toEqual(['gardyn-2', 2, 5]);
+    expect([B.gardynId, B.col, B.position]).toEqual(['gardyn-1', 1, 1]);
+    const bChore: any = db.prepare('SELECT gardyn_id FROM chores WHERE plant_id = ?').get(b.id);
+    expect(bChore.gardyn_id).toBe('gardyn-1');
+  });
+});
+
+describe('archivePlant', () => {
+  it('deletes the plant open chores but keeps completed history', () => {
+    const cid = basil();
+    const p = createPlant(db, { gardynId: 'gardyn-1', col: 1, position: 1, catalogId: cid });
+    const open = db
+      .prepare(
+        `INSERT INTO chores (gardyn_id, plant_id, title, source, created_at)
+         VALUES (?, ?, 'Trim', 'manual', '2026-07-16T10:00:00.000Z')`,
+      )
+      .run(p.gardynId, p.id);
+    const done = db
+      .prepare(
+        `INSERT INTO chores (gardyn_id, plant_id, title, source, created_at, completed_at)
+         VALUES (?, ?, 'Pollinate', 'manual', '2026-07-16T10:00:00.000Z', '2026-07-16T11:00:00.000Z')`,
+      )
+      .run(p.gardynId, p.id);
+    archivePlant(db, p.id, 'died', '2026-07-16T12:00:00.000Z');
+    expect(db.prepare('SELECT COUNT(*) as n FROM chores WHERE id = ?').get(open.lastInsertRowid)).toEqual({
+      n: 0,
+    });
+    expect(db.prepare('SELECT completed_at FROM chores WHERE id = ?').get(done.lastInsertRowid)).toBeTruthy();
+  });
+
+  it('returns false for a missing id and for an already-archived plant', () => {
+    const cid = basil();
+    const p = createPlant(db, { gardynId: 'gardyn-1', col: 1, position: 1, catalogId: cid });
+    expect(archivePlant(db, 9999, 'other', '2026-07-16T13:00:00.000Z')).toBe(false);
+    expect(archivePlant(db, p.id, 'harvested', '2026-07-16T12:00:00.000Z')).toBe(true);
+    expect(archivePlant(db, p.id, 'other', '2026-07-16T13:00:00.000Z')).toBe(false);
+  });
+
+  it('frees the slot so a new plant can be created there', () => {
+    const cid = basil();
+    const p = createPlant(db, { gardynId: 'gardyn-1', col: 2, position: 1, catalogId: cid });
+    expect(archivePlant(db, p.id, 'harvested', '2026-07-16T12:00:00.000Z')).toBe(true);
+    const again = createPlant(db, { gardynId: 'gardyn-1', col: 2, position: 1, catalogId: cid });
+    expect(again.id).not.toBe(p.id);
+    expect(getPlant(db, again.id)?.removedAt).toBeNull();
   });
 });
 

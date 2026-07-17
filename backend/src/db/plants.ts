@@ -248,17 +248,19 @@ export function seedFakePlants(db: Database.Database): void {
   const existing = db.prepare('SELECT COUNT(*) as n FROM plants').get() as { n: number };
   if (existing.n > 0) return;
   const now = '2026-07-17T00:00:00.000Z';
-  const ids = FAKE_CATALOG.map((c) => createCatalog(db, { ...c, demo: true }, now).id);
-  for (const p of FAKE_PLACEMENTS) {
-    createPlant(db, {
-      gardynId: p.gardynId,
-      col: p.col,
-      position: p.position,
-      catalogId: ids[p.catalogIndex],
-      plantedAt: p.plantedAt,
-      demo: true,
-    });
-  }
+  db.transaction(() => {
+    const ids = FAKE_CATALOG.map((c) => createCatalog(db, { ...c, demo: true }, now).id);
+    for (const p of FAKE_PLACEMENTS) {
+      createPlant(db, {
+        gardynId: p.gardynId,
+        col: p.col,
+        position: p.position,
+        catalogId: ids[p.catalogIndex],
+        plantedAt: p.plantedAt,
+        demo: true,
+      });
+    }
+  })();
 }
 
 export function clearDemoData(db: Database.Database): void {
