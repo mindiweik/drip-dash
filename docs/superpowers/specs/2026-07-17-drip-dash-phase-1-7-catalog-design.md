@@ -74,8 +74,8 @@ Tap an empty slot → Add Plant modal, now catalog-driven:
 
 ### 5. Clear demo data
 
-- A simple **"clear demo data"** action removes the 6 fake seed plants (and their fake-seeded catalog entries) in one step, so wiping scaffolding after taking real inventory isn't six manual removes.
-- Scoped to the demo fakes (identified as the seeded set), not a nuke-everything button.
+- A simple **"clear demo data"** action removes the seeded fakes in one step, so wiping scaffolding after taking real inventory isn't six manual removes.
+- Scoped by the `demo` flag on catalog + plants (set by the seeder), so it deletes only demo plants (and their chores/tasks) and demo catalog entries — never real varieties Mindi has entered. `POST /api/clear-demo`.
 
 ## API surface
 
@@ -87,19 +87,22 @@ Tap an empty slot → Add Plant modal, now catalog-driven:
 - The existing plant-update endpoint (1.5/1.6 `PUT /api/plants/:id`) **narrows to instance-only fields** — `planted_at` and `notes`. Name/variety/care/about/uses are no longer plant-editable; changing them is a variety edit via `PATCH /api/catalog/:id` (which is a variety-wide rename/update by design).
 - Existing `DELETE /api/plants/:id` (archive) and `PATCH /api/plants/:id/position` (move/swap) from 1.6 are unchanged.
 
-## Migration
+## Migration — fresh schema + reseed (no backfill)
 
-- Schema adds the `catalog` table + unique identity index + `plants.catalog_id`.
-- **One-time backfill** for any existing plants (order matters, since the dedupe key uses columns about to be dropped): for each distinct `(name, COALESCE(variety,''))` across **all** plants (active and archived — archived feed 1.9 analytics), create a catalog entry, lifting the first non-null `care_instructions` / `about` / `uses` found (deterministic by plant id order), and stamp `catalog_id` onto every matching plant.
-- **Then drop** `name`, `variety`, `care_instructions`, `about`, `uses` from `plants` (SQLite `ALTER TABLE ... DROP COLUMN`, supported by the bundled SQLite) — they now live on the catalog. The local db reseeds cleanly (`rm drip-dash.db*` + restart) if a migration ever goes sideways.
+Mindi has **no real data yet**; the only rows are the 6 demo fakes, and this repo's established norm is to reseed the local db cleanly. So rather than an ALTER-based column migration, Phase 1.7 defines the **new schema shape directly** and reseeds:
+
+- The `plants` table is defined fresh: it **no longer has** `name`, `variety`, `care_instructions`, `about`, `uses` columns; it gains `catalog_id INTEGER` and a `demo INTEGER NOT NULL DEFAULT 0` flag. Identity + reference fields live on the new `catalog` table.
+- `catalog` also carries a `demo` flag so the "clear demo data" action (§5) removes only seeded fakes, never real varieties.
+- **Consequence:** an existing dev db from 1.6 has the old plants shape and must be reseeded once — `rm drip-dash.db*` then restart. This is the documented fallback and loses nothing (no real data). Production/Pi deploy has no data yet either.
+- `seedFakePlants` seeds **catalog first** (6 demo entries from the current fakes: Basil/Genovese, Cherry Tomato/Red Robin, Lettuce/Butterhead, Thai Chili/·, Strawberry/Alpine, Rainbow Chard/·, all `demo=1`) then seeds the plant rows linked by `catalog_id` (also `demo=1`).
 - `seedFakePlants` reworked to **seed catalog first** (6 entries from the current fakes: Basil/Genovese, Cherry Tomato/Red Robin, Lettuce/Butterhead, Thai Chili/·, Strawberry/Alpine, Rainbow Chard/·) then seed plants linked by `catalog_id`.
 
 ## Testing (TDD, matching repo rigor)
 
 - **Catalog repo:** create; unique-collapse (two varietyless "Thai Chili" → conflict, distinct varieties of same name allowed); patch partial + 404.
 - **Plant create with catalogId:** happy path sets catalog_id; 400 on missing catalogId; 404 on unknown catalog; 409 on occupied slot; geometry validation.
-- **Backfill:** existing mixed active/archived plants dedupe into the right catalog entries; first-non-null lifting; catalog_id stamped; name/variety/care/about/uses columns gone from plants afterward.
 - **Read join:** GET /api/plants returns name/variety + reference fields resolved from catalog; a variety rename via PATCH reflects on its plants.
+- **Seed + clear-demo:** seedFakePlants creates demo catalog + demo plants (`demo=1`); `POST /api/clear-demo` removes demo plants (+ their chores) and demo catalog only, leaving real varieties untouched.
 - **Frontend:** tsc clean; picker renders catalog list, pick-existing vs add-new paths, "Edit variety details" opens editor and PATCH round-trips. (Repo leans backend-vitest; frontend gets a smoke pass consistent with 1.5/1.6.)
 
 ## Out of scope (later phases / threads)
