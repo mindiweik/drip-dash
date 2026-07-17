@@ -148,21 +148,30 @@ export function createPlant(db: Database.Database, input: CreatePlantInput): Pla
       `slot (${input.col}, ${input.position}) in ${input.gardynId} is occupied`,
     );
   }
-  const result = db
-    .prepare(
-      `INSERT INTO plants (gardyn_id, col, position, catalog_id, planted_at, notes, demo)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    )
-    .run(
-      input.gardynId,
-      input.col,
-      input.position,
-      input.catalogId,
-      input.plantedAt ?? null,
-      input.notes ?? null,
-      input.demo ? 1 : 0,
-    );
-  return getPlant(db, Number(result.lastInsertRowid))!;
+  const insertedId = db.transaction(() => {
+    // A real plant placed on a still-demo catalog variety (via the add-plant picker,
+    // which doesn't distinguish demo vs. real) must promote that variety to real so
+    // clearDemoData doesn't later delete a catalog row a real plant depends on.
+    if (!input.demo) {
+      db.prepare('UPDATE catalog SET demo = 0 WHERE id = ? AND demo = 1').run(input.catalogId);
+    }
+    const result = db
+      .prepare(
+        `INSERT INTO plants (gardyn_id, col, position, catalog_id, planted_at, notes, demo)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        input.gardynId,
+        input.col,
+        input.position,
+        input.catalogId,
+        input.plantedAt ?? null,
+        input.notes ?? null,
+        input.demo ? 1 : 0,
+      );
+    return Number(result.lastInsertRowid);
+  })();
+  return getPlant(db, insertedId)!;
 }
 
 export function archivePlant(
@@ -269,6 +278,10 @@ export function clearDemoData(db: Database.Database): void {
       'DELETE FROM chores WHERE plant_id IN (SELECT id FROM plants WHERE demo = 1)',
     ).run();
     db.prepare('DELETE FROM plants WHERE demo = 1').run();
-    db.prepare('DELETE FROM catalog WHERE demo = 1').run();
+    // Never delete a demo catalog row that a surviving plant still references
+    // (e.g. a real plant placed onto a demo variety before it was promoted).
+    db.prepare(
+      'DELETE FROM catalog WHERE demo = 1 AND id NOT IN (SELECT catalog_id FROM plants WHERE catalog_id IS NOT NULL)',
+    ).run();
   })();
 }

@@ -211,4 +211,39 @@ describe('seedFakePlants + clearDemoData', () => {
     const names = db.prepare('SELECT name FROM catalog').all() as { name: string }[];
     expect(names.map((r) => r.name)).toEqual(['Cilantro']);
   });
+
+  it('promotes a demo catalog variety to real when a real plant links to it, and survives clearDemoData', () => {
+    seedFakePlants(db);
+    const basilCatalog = db.prepare("SELECT id, demo FROM catalog WHERE name = 'Basil'").get() as {
+      id: number;
+      demo: number;
+    };
+    expect(basilCatalog.demo).toBe(1);
+
+    // A real plant (no demo flag) placed via the picker onto the seeded Basil variety.
+    const realPlant = createPlant(db, {
+      gardynId: 'gardyn-2',
+      col: 3,
+      position: 10,
+      catalogId: basilCatalog.id,
+    });
+
+    const promoted = db.prepare('SELECT demo FROM catalog WHERE id = ?').get(basilCatalog.id) as {
+      demo: number;
+    };
+    expect(promoted.demo).toBe(0);
+
+    clearDemoData(db);
+
+    const remaining = listPlants(db);
+    const survivor = remaining.find((p) => p.id === realPlant.id);
+    expect(survivor).toBeTruthy();
+    expect(survivor?.name).toBe('Basil');
+    expect(survivor?.gardynId).toBe('gardyn-2');
+    expect(survivor?.col).toBe(3);
+    expect(survivor?.position).toBe(10);
+
+    const catalogSurvivor = db.prepare('SELECT id FROM catalog WHERE id = ?').get(basilCatalog.id);
+    expect(catalogSurvivor).toBeTruthy();
+  });
 });
