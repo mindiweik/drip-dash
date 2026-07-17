@@ -22,3 +22,38 @@ describe('database', () => {
     expect(JSON.parse(row.data).waterLevelPct).toBe(80);
   });
 });
+
+describe('schema: catalog', () => {
+  it('has a catalog table with reference columns', () => {
+    const db = getDb(':memory:catalog-schema');
+    const cols = db.prepare(`PRAGMA table_info(catalog)`).all() as { name: string }[];
+    const names = cols.map((c) => c.name);
+    expect(names).toEqual(
+      expect.arrayContaining([
+        'id', 'name', 'variety', 'temp_pref', 'time_to_maturity',
+        'care_instructions', 'about', 'uses', 'details', 'demo', 'created_at',
+      ]),
+    );
+  });
+
+  it('plants table links to catalog and dropped the promoted columns', () => {
+    const db = getDb(':memory:plants-schema');
+    const cols = (db.prepare(`PRAGMA table_info(plants)`).all() as { name: string }[]).map((c) => c.name);
+    expect(cols).toEqual(expect.arrayContaining(['catalog_id', 'demo', 'planted_at', 'notes']));
+    expect(cols).not.toContain('care_instructions');
+    expect(cols).not.toContain('name');
+    expect(cols).not.toContain('variety');
+  });
+
+  it('enforces one catalog entry per (name, variety) collapsing null variety', () => {
+    const db = getDb(':memory:catalog-unique');
+    const ins = db.prepare(
+      `INSERT INTO catalog (name, variety, demo, created_at) VALUES (?, ?, 0, '2026-07-17')`,
+    );
+    ins.run('Thai Chili', null);
+    expect(() => ins.run('Thai Chili', null)).toThrow();
+    // different variety of same name is allowed
+    expect(() => ins.run('Basil', 'Genovese')).not.toThrow();
+    expect(() => ins.run('Basil', 'Thai')).not.toThrow();
+  });
+});
