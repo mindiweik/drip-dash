@@ -38,15 +38,31 @@ export interface Plant {
   gardynId: string;
   col: number;
   position: number;
+  catalogId: number;
   name: string;
   variety: string | null;
-  plantedAt: string | null;
-  notes: string | null;
+  tempPref: string | null;
+  timeToMaturity: string | null;
   careInstructions: string | null;
   about: string | null;
   uses: string | null;
+  details: string | null;
+  plantedAt: string | null;
+  notes: string | null;
   removedAt: string | null;
   removedReason: string | null;
+}
+
+export interface CatalogEntry {
+  id: number;
+  name: string;
+  variety: string | null;
+  tempPref: string | null;
+  timeToMaturity: string | null;
+  careInstructions: string | null;
+  about: string | null;
+  uses: string | null;
+  details: string | null;
 }
 
 export interface PlantTask {
@@ -104,20 +120,42 @@ export async function fetchPlants(): Promise<Plant[]> {
 
 export async function updatePlant(
   id: number,
-  patch: Partial<
-    Pick<Plant, 'name' | 'variety' | 'plantedAt' | 'notes' | 'careInstructions' | 'about' | 'uses'>
-  >,
+  patch: Partial<Pick<Plant, 'plantedAt' | 'notes'>>,
 ): Promise<void> {
   await sendJson(`/api/plants/${id}`, 'PUT', patch);
 }
 
 export async function createPlant(input: {
-  gardynId: string; col: number; position: number; name: string;
-  variety?: string | null; plantedAt?: string | null; notes?: string | null;
-  careInstructions?: string | null; about?: string | null; uses?: string | null;
+  gardynId: string; col: number; position: number; catalogId: number;
+  plantedAt?: string | null; notes?: string | null;
 }): Promise<Plant> {
   const body = await sendJson<{ plant: Plant }>('/api/plants', 'POST', input);
   return body.plant;
+}
+
+export async function fetchCatalog(): Promise<CatalogEntry[]> {
+  const body = await getJson<{ catalog: CatalogEntry[] }>('/api/catalog');
+  return body.catalog;
+}
+
+export async function createCatalogEntry(input: {
+  name: string; variety?: string | null; tempPref?: string | null;
+  timeToMaturity?: string | null; careInstructions?: string | null;
+  about?: string | null; uses?: string | null; details?: string | null;
+}): Promise<CatalogEntry> {
+  const body = await sendJson<{ catalog: CatalogEntry }>('/api/catalog', 'POST', input);
+  return body.catalog;
+}
+
+export async function updateCatalogEntry(
+  id: number,
+  patch: Partial<Omit<CatalogEntry, 'id'>>,
+): Promise<void> {
+  await sendJson(`/api/catalog/${id}`, 'PATCH', patch);
+}
+
+export async function clearDemoData(): Promise<void> {
+  await sendJson('/api/clear-demo', 'POST');
 }
 
 export async function removePlant(id: number, reason: RemoveReason): Promise<void> {
