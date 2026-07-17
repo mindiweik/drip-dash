@@ -8,20 +8,19 @@ import {
   deletePlantTask,
 } from './plantTasks.js';
 import { getOpenChores, completeChore, uncompleteChore } from './chores.js';
-import { archivePlant } from '../db/plants.js';
+import { archivePlant, createPlant } from '../db/plants.js';
+import { createCatalog } from '../db/catalog.js';
+
+const NOW = '2026-07-15T12:00:00.000Z';
 
 let n = 0;
 function dbWithPlant() {
   const db = getDb(`:memory:ptask-${n++}`);
   seedDefaultGardens(db);
-  db.prepare(
-    "INSERT INTO plants (gardyn_id, col, position, name) VALUES ('gardyn-1', 1, 1, 'Basil')",
-  ).run();
-  const plant: any = db.prepare('SELECT id FROM plants').get();
-  return { db, plantId: plant.id as number };
+  const catalogId = createCatalog(db, { name: 'Basil' }, NOW).id;
+  const plant = createPlant(db, { gardynId: 'gardyn-1', col: 1, position: 1, catalogId });
+  return { db, plantId: plant.id };
 }
-
-const NOW = '2026-07-15T12:00:00.000Z';
 
 describe('plant tasks', () => {
   it('creates, lists, edits, and deletes a plant task', () => {

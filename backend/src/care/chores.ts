@@ -64,8 +64,9 @@ function toChore(row: ChoreRow): Chore {
 export function getOpenChores(db: Database.Database, now?: string): Chore[] {
   const dueFilter = now ? 'AND (c.due_at IS NULL OR c.due_at <= ?)' : '';
   const stmt = db.prepare(
-    `SELECT c.*, p.name AS plant_name FROM chores c
+    `SELECT c.*, cat.name AS plant_name FROM chores c
      LEFT JOIN plants p ON p.id = c.plant_id
+     LEFT JOIN catalog cat ON cat.id = p.catalog_id
      WHERE c.completed_at IS NULL ${dueFilter}
      ORDER BY c.created_at ASC`,
   );
@@ -97,8 +98,9 @@ export function uncompleteChore(db: Database.Database, id: number): void {
 export function getChoresCompletedSince(db: Database.Database, sinceIso: string): Chore[] {
   const rows = db
     .prepare(
-      `SELECT c.*, p.name AS plant_name FROM chores c
+      `SELECT c.*, cat.name AS plant_name FROM chores c
        LEFT JOIN plants p ON p.id = c.plant_id
+       LEFT JOIN catalog cat ON cat.id = p.catalog_id
        WHERE c.completed_at IS NOT NULL AND c.completed_at >= ?
        ORDER BY c.completed_at DESC`,
     )
