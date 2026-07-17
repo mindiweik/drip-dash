@@ -8,6 +8,7 @@ import {
   deletePlantTask,
 } from './plantTasks.js';
 import { getOpenChores, completeChore, uncompleteChore } from './chores.js';
+import { archivePlant } from '../db/plants.js';
 
 let n = 0;
 function dbWithPlant() {
@@ -61,5 +62,11 @@ describe('plant tasks', () => {
   it('rejects tasks for a missing plant', () => {
     const { db } = dbWithPlant();
     expect(() => createPlantTask(db, 9999, { title: 'x', kind: 'other' }, NOW)).toThrow();
+  });
+
+  it('rejects tasks for an archived plant', () => {
+    const { db, plantId } = dbWithPlant();
+    archivePlant(db, plantId, 'other', NOW);
+    expect(() => createPlantTask(db, plantId, { title: 'x', kind: 'other' }, NOW)).toThrow();
   });
 });

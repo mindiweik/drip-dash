@@ -1,5 +1,6 @@
 export type LightState = 'on' | 'off';
 export type TaskKind = 'pollinate' | 'roots' | 'trim' | 'harvest' | 'other';
+export type RemoveReason = 'harvested' | 'died' | 'other';
 
 export interface GardynSnapshot {
   gardynId: string;
@@ -44,6 +45,8 @@ export interface Plant {
   careInstructions: string | null;
   about: string | null;
   uses: string | null;
+  removedAt: string | null;
+  removedReason: string | null;
 }
 
 export interface PlantTask {
@@ -106,6 +109,27 @@ export async function updatePlant(
   >,
 ): Promise<void> {
   await sendJson(`/api/plants/${id}`, 'PUT', patch);
+}
+
+export async function createPlant(input: {
+  gardynId: string; col: number; position: number; name: string;
+  variety?: string | null; plantedAt?: string | null; notes?: string | null;
+  careInstructions?: string | null; about?: string | null; uses?: string | null;
+}): Promise<Plant> {
+  const body = await sendJson<{ plant: Plant }>('/api/plants', 'POST', input);
+  return body.plant;
+}
+
+export async function removePlant(id: number, reason: RemoveReason): Promise<void> {
+  await sendJson(`/api/plants/${id}`, 'DELETE', { reason });
+}
+
+export async function movePlant(
+  id: number,
+  target: { gardynId: string; col: number; position: number },
+): Promise<{ swapped: boolean }> {
+  const body = await sendJson<{ ok: true; swapped: boolean }>(`/api/plants/${id}/position`, 'PATCH', target);
+  return { swapped: body.swapped };
 }
 
 export async function fetchPlantTasks(plantId: number): Promise<PlantTask[]> {

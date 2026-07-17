@@ -273,4 +273,58 @@ describe('garden routes', () => {
     expect(row).toBeDefined();
     expect(row.title).toBe('Tank clean');
   });
+
+  it('POST /api/plants creates in an empty slot, 409s occupied, 400s bad input', async () => {
+    const { app, db } = appWith(':memory:routes-create');
+    seedDefaultGardens(db);
+    const ok = await request(app).post('/api/plants').send({
+      gardynId: 'gardyn-1', col: 1, position: 3, name: 'Dill', variety: 'Bouquet',
+    });
+    expect(ok.status).toBe(200);
+    expect(ok.body.plant.name).toBe('Dill');
+    const dup = await request(app).post('/api/plants').send({
+      gardynId: 'gardyn-1', col: 1, position: 3, name: 'Mint',
+    });
+    expect(dup.status).toBe(409);
+    const noName = await request(app).post('/api/plants').send({ gardynId: 'gardyn-1', col: 1, position: 4 });
+    expect(noName.status).toBe(400);
+    const badSlot = await request(app).post('/api/plants').send({
+      gardynId: 'gardyn-1', col: 9, position: 1, name: 'Mint',
+    });
+    expect(badSlot.status).toBe(400);
+  });
+
+  it('DELETE /api/plants/:id archives with a reason', async () => {
+    const { app, db } = appWith(':memory:routes-archive');
+    seedDefaultGardens(db);
+    const created = await request(app).post('/api/plants').send({
+      gardynId: 'gardyn-1', col: 1, position: 1, name: 'Basil',
+    });
+    const id = created.body.plant.id;
+    const badReason = await request(app).delete(`/api/plants/${id}`).send({ reason: 'vanished' });
+    expect(badReason.status).toBe(400);
+    const ok = await request(app).delete(`/api/plants/${id}`).send({ reason: 'harvested' });
+    expect(ok.status).toBe(200);
+    const row: any = db.prepare('SELECT removed_reason FROM plants WHERE id = ?').get(id);
+    expect(row.removed_reason).toBe('harvested');
+    const again = await request(app).delete(`/api/plants/${id}`).send({ reason: 'other' });
+    expect(again.status).toBe(404);
+  });
+
+  it('PATCH /api/plants/:id/position moves and swaps', async () => {
+    const { app, db } = appWith(':memory:routes-move');
+    seedDefaultGardens(db);
+    const a = (await request(app).post('/api/plants').send({ gardynId: 'gardyn-1', col: 1, position: 1, name: 'A' })).body.plant;
+    const b = (await request(app).post('/api/plants').send({ gardynId: 'gardyn-2', col: 2, position: 5, name: 'B' })).body.plant;
+    const move = await request(app).patch(`/api/plants/${a.id}/position`).send({ gardynId: 'gardyn-1', col: 3, position: 7 });
+    expect(move.status).toBe(200);
+    expect(move.body.swapped).toBe(false);
+    const swap = await request(app).patch(`/api/plants/${a.id}/position`).send({ gardynId: 'gardyn-2', col: 2, position: 5 });
+    expect(swap.status).toBe(200);
+    expect(swap.body.swapped).toBe(true);
+    const bad = await request(app).patch(`/api/plants/${a.id}/position`).send({ gardynId: 'gardyn-1', col: 99, position: 1 });
+    expect(bad.status).toBe(400);
+    const missing = await request(app).patch('/api/plants/9999/position').send({ gardynId: 'gardyn-1', col: 1, position: 2 });
+    expect(missing.status).toBe(404);
+  });
 });

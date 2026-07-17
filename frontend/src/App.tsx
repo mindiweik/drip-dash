@@ -4,6 +4,7 @@ import type { GardenStatus, Chore, Plant } from './api';
 import GardenPage from './components/GardenPage';
 import BreakBoard from './components/BreakBoard';
 import PlantModal from './components/PlantModal';
+import AddPlantModal from './components/AddPlantModal';
 
 const REFRESH_MS = 60_000;
 type Tab = 'gardyn' | 'todo';
@@ -17,6 +18,7 @@ function App() {
   const [tab, setTab] = useState<Tab>('gardyn');
   const [gardenIndex, setGardenIndex] = useState(0);
   const [selectedPlant, setSelectedPlant] = useState<Plant | null>(null);
+  const [addTarget, setAddTarget] = useState<{ col: number; position: number } | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -99,6 +101,7 @@ function App() {
               plants={plants}
               dueChores={chores}
               onPlantClick={setSelectedPlant}
+              onEmptySlotClick={(col, position) => setAddTarget({ col, position })}
             />
           </div>
         )}
@@ -118,6 +121,19 @@ function App() {
           plant={selectedPlant}
           onClose={() => setSelectedPlant(null)}
           onChanged={() => void load()}
+          gardens={gardens}
+          allPlants={plants}
+        />
+      )}
+
+      {addTarget && garden && (
+        <AddPlantModal
+          gardenId={garden.gardynId}
+          gardenName={garden.name}
+          col={addTarget.col}
+          position={addTarget.position}
+          onClose={() => setAddTarget(null)}
+          onAdded={() => void load()}
         />
       )}
 

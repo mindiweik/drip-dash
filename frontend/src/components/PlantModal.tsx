@@ -6,8 +6,10 @@ import {
   updatePlantTask,
   deletePlantTask,
   completeChore,
+  removePlant,
+  movePlant,
 } from '../api';
-import type { Plant, PlantTask, TaskKind } from '../api';
+import type { Plant, PlantTask, TaskKind, GardenStatus, RemoveReason } from '../api';
 import { KIND_STYLES } from './GardenPage';
 
 const KINDS: TaskKind[] = ['pollinate', 'roots', 'trim', 'harvest', 'other'];
@@ -16,10 +18,14 @@ export default function PlantModal({
   plant,
   onClose,
   onChanged,
+  gardens,
+  allPlants,
 }: {
   plant: Plant;
   onClose: () => void;
   onChanged: () => void;
+  gardens: GardenStatus[];
+  allPlants: Plant[];
 }) {
   const [tasks, setTasks] = useState<PlantTask[]>([]);
   const [name, setName] = useState(plant.name);
@@ -33,6 +39,9 @@ export default function PlantModal({
   const [newKind, setNewKind] = useState<TaskKind>('other');
   const [newDue, setNewDue] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [moving, setMoving] = useState(false);
+  const [moveGarden, setMoveGarden] = useState(plant.gardynId);
+  const [confirmingRemove, setConfirmingRemove] = useState(false);
 
   const loadTasks = useCallback(async () => {
     try {
@@ -196,6 +205,106 @@ export default function PlantModal({
               Add
             </button>
           </div>
+        </div>
+
+        <div className="mt-6 border-t border-slate-800 pt-4">
+          {!moving ? (
+            <button onClick={() => setMoving(true)} className="rounded-lg bg-slate-800 px-4 py-2 text-sm hover:bg-slate-700">
+              Move plant...
+            </button>
+          ) : (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-slate-300">Move to</span>
+                <select
+                  value={moveGarden}
+                  onChange={(e) => setMoveGarden(e.target.value)}
+                  className="rounded-lg bg-slate-800 px-2 py-1 text-sm text-slate-100"
+                >
+                  {gardens.map((g) => (
+                    <option key={g.gardynId} value={g.gardynId}>{g.name}</option>
+                  ))}
+                </select>
+                <button onClick={() => setMoving(false)} className="ml-auto rounded-lg bg-slate-800 px-3 py-1 text-sm hover:bg-slate-700">
+                  Cancel
+                </button>
+              </div>
+              <p className="text-xs text-slate-500">Tap a slot. Occupied slots swap the two plants.</p>
+              <div className="grid grid-cols-3 gap-2">
+                {[1, 2, 3].map((col) => (
+                  <div key={col} className="space-y-1">
+                    {Array.from({ length: 10 }, (_, i) => i + 1).map((position) => {
+                      const occupant = allPlants.find(
+                        (p) => p.gardynId === moveGarden && p.col === col && p.position === position,
+                      );
+                      const isCurrent = occupant?.id === plant.id;
+                      return (
+                        <button
+                          key={position}
+                          disabled={isCurrent}
+                          onClick={() =>
+                            run(async () => {
+                              await movePlant(plant.id, { gardynId: moveGarden, col, position });
+                              setMoving(false);
+                            })
+                          }
+                          className={`w-full rounded-lg px-2 py-1 text-xs ${
+                            isCurrent
+                              ? 'bg-emerald-900 text-emerald-300'
+                              : occupant
+                                ? 'bg-amber-900 text-amber-200 hover:bg-amber-800'
+                                : 'border border-dashed border-slate-700 text-slate-500 hover:border-slate-500'
+                          }`}
+                        >
+                          {occupant ? occupant.name : position}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="mt-6 border-t border-slate-800 pt-4">
+          {!confirmingRemove ? (
+            <button
+              onClick={() => setConfirmingRemove(true)}
+              className="rounded-lg bg-slate-800 px-4 py-2 text-sm text-red-400 hover:bg-red-950"
+            >
+              Remove plant...
+            </button>
+          ) : (
+            <div className="space-y-2">
+              <p className="text-sm text-slate-300">Why is {plant.name} coming out?</p>
+              <div className="flex flex-wrap gap-2">
+                {(['harvested', 'died', 'other'] as RemoveReason[]).map((reason) => (
+                  <button
+                    key={reason}
+                    onClick={() =>
+                      run(async () => {
+                        await removePlant(plant.id, reason);
+                        onClose();
+                      })
+                    }
+                    className="rounded-lg bg-red-900 px-4 py-2 text-sm font-medium capitalize hover:bg-red-800"
+                  >
+                    {reason}
+                  </button>
+                ))}
+                <button
+                  onClick={() => setConfirmingRemove(false)}
+                  className="rounded-lg bg-slate-800 px-4 py-2 text-sm hover:bg-slate-700"
+                >
+                  Cancel
+                </button>
+              </div>
+              <p className="text-xs text-slate-500">
+                The plant leaves the grid but its history is kept.
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </div>
