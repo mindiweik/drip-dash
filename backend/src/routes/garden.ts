@@ -3,8 +3,19 @@ import type Database from 'better-sqlite3';
 import { getLatestSnapshot } from '../db/snapshots.js';
 import { getOpenChores, completeChore, uncompleteChore, getChoresCompletedSince } from '../care/chores.js';
 import { listGardens } from '../db/gardens.js';
-import { listPlants, updatePlant, createPlant, archivePlant, movePlant, SlotOccupiedError, InvalidSlotError } from '../db/plants.js';
+import {
+  listPlants,
+  updatePlant,
+  createPlant,
+  archivePlant,
+  movePlant,
+  clearDemoData,
+  SlotOccupiedError,
+  InvalidSlotError,
+  CatalogMissingError,
+} from '../db/plants.js';
 import type { RemoveReason } from '../db/plants.js';
+import { listCatalog, createCatalog, updateCatalog, CatalogExistsError } from '../db/catalog.js';
 import {
   getPlantTasks,
   createPlantTask,
@@ -62,14 +73,8 @@ export function makeGardenRouter(db: Database.Database, now: () => Date = () => 
   });
 
   router.put('/plants/:id', (req, res) => {
-    const { name, variety, plantedAt, notes, careInstructions, about, uses } = req.body ?? {};
-    // Guard against null or empty name
-    if (name === null || name === '') {
-      return res.status(400).json({ error: 'name cannot be empty' });
-    }
-    const ok = updatePlant(db, Number(req.params.id), {
-      name, variety, plantedAt, notes, careInstructions, about, uses,
-    });
+    const { plantedAt, notes } = req.body ?? {};
+    const ok = updatePlant(db, Number(req.params.id), { plantedAt, notes });
     if (!ok) return res.status(404).json({ ok: false });
     res.json({ ok: true });
   });
@@ -107,12 +112,15 @@ export function makeGardenRouter(db: Database.Database, now: () => Date = () => 
   });
 
   router.post('/plants', (req, res) => {
-    const { gardynId, col, position, name, variety, plantedAt, notes, careInstructions, about, uses } = req.body ?? {};
-    if (!name || typeof name !== 'string') return res.status(400).json({ error: 'name required' });
+    const { gardynId, col, position, catalogId, plantedAt, notes } = req.body ?? {};
+    if (catalogId === undefined || catalogId === null || typeof catalogId !== 'number') {
+      return res.status(400).json({ error: 'catalogId required' });
+    }
     try {
-      const plant = createPlant(db, { gardynId, col, position, name, variety, plantedAt, notes, careInstructions, about, uses });
+      const plant = createPlant(db, { gardynId, col, position, catalogId, plantedAt, notes });
       res.json({ plant });
     } catch (err) {
+      if (err instanceof CatalogMissingError) return res.status(404).json({ error: 'catalog entry not found' });
       if (err instanceof SlotOccupiedError) return res.status(409).json({ error: 'slot occupied' });
       if (err instanceof InvalidSlotError) return res.status(400).json({ error: 'invalid slot' });
       throw err;
@@ -133,6 +141,43 @@ export function makeGardenRouter(db: Database.Database, now: () => Date = () => 
     if (result === 'missing') return res.status(404).json({ ok: false });
     if (result === 'invalid') return res.status(400).json({ error: 'invalid target' });
     res.json({ ok: true, swapped: result === 'swapped' });
+  });
+
+  router.get('/catalog', (_req, res) => {
+    res.json({ catalog: listCatalog(db) });
+  });
+
+  router.post('/catalog', (req, res) => {
+    const { name, variety, tempPref, timeToMaturity, careInstructions, about, uses, details } = req.body ?? {};
+    if (!name || typeof name !== 'string') return res.status(400).json({ error: 'name required' });
+    try {
+      const catalog = createCatalog(
+        db,
+        { name, variety, tempPref, timeToMaturity, careInstructions, about, uses, details },
+        now().toISOString(),
+      );
+      res.json({ catalog });
+    } catch (err) {
+      if (err instanceof CatalogExistsError) return res.status(409).json({ error: 'variety already exists' });
+      throw err;
+    }
+  });
+
+  router.patch('/catalog/:id', (req, res) => {
+    const { name, variety, tempPref, timeToMaturity, careInstructions, about, uses, details } = req.body ?? {};
+    if (name !== undefined && (name === null || name === '')) {
+      return res.status(400).json({ error: 'name cannot be empty' });
+    }
+    const ok = updateCatalog(db, Number(req.params.id), {
+      name, variety, tempPref, timeToMaturity, careInstructions, about, uses, details,
+    });
+    if (!ok) return res.status(404).json({ ok: false });
+    res.json({ ok: true });
+  });
+
+  router.post('/clear-demo', (_req, res) => {
+    clearDemoData(db);
+    res.json({ ok: true });
   });
 
   return router;

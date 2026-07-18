@@ -11,6 +11,7 @@ import {
 } from '../api';
 import type { Plant, PlantTask, TaskKind, GardenStatus, RemoveReason } from '../api';
 import { KIND_STYLES } from './GardenPage';
+import EditVarietyModal from './EditVarietyModal';
 
 const KINDS: TaskKind[] = ['pollinate', 'roots', 'trim', 'harvest', 'other'];
 
@@ -28,13 +29,8 @@ export default function PlantModal({
   allPlants: Plant[];
 }) {
   const [tasks, setTasks] = useState<PlantTask[]>([]);
-  const [name, setName] = useState(plant.name);
-  const [variety, setVariety] = useState(plant.variety ?? '');
   const [plantedAt, setPlantedAt] = useState(plant.plantedAt ?? '');
   const [notes, setNotes] = useState(plant.notes ?? '');
-  const [careInstructions, setCareInstructions] = useState(plant.careInstructions ?? '');
-  const [about, setAbout] = useState(plant.about ?? '');
-  const [uses, setUses] = useState(plant.uses ?? '');
   const [newTitle, setNewTitle] = useState('');
   const [newKind, setNewKind] = useState<TaskKind>('other');
   const [newDue, setNewDue] = useState('');
@@ -42,6 +38,7 @@ export default function PlantModal({
   const [moving, setMoving] = useState(false);
   const [moveGarden, setMoveGarden] = useState(plant.gardynId);
   const [confirmingRemove, setConfirmingRemove] = useState(false);
+  const [editingVariety, setEditingVariety] = useState(false);
 
   const loadTasks = useCallback(async () => {
     try {
@@ -71,13 +68,8 @@ export default function PlantModal({
   const saveDetails = () =>
     run(() =>
       updatePlant(plant.id, {
-        name,
-        variety: variety || null,
         plantedAt: plantedAt || null,
         notes: notes || null,
-        careInstructions: careInstructions || null,
-        about: about || null,
-        uses: uses || null,
       }),
     );
 
@@ -118,32 +110,31 @@ export default function PlantModal({
         {error && <p className="mt-2 text-sm text-amber-500">{error}</p>}
 
         <div className="mt-4 space-y-2">
-          <label className="block text-sm text-slate-400">
-            Name
-            <input value={name} onChange={(e) => setName(e.target.value)} className={textInput} />
-          </label>
-          <label className="block text-sm text-slate-400">
-            Variety
-            <input value={variety} onChange={(e) => setVariety(e.target.value)} className={textInput} />
-          </label>
+          <div className="rounded-xl bg-slate-800/60 p-3 text-sm text-slate-300">
+            <div className="flex items-center justify-between">
+              <span className="font-medium text-slate-100">
+                {plant.name}{plant.variety ? `, ${plant.variety}` : ''}
+              </span>
+              <button
+                onClick={() => setEditingVariety(true)}
+                className="rounded-lg bg-slate-700 px-2 py-1 text-xs hover:bg-slate-600"
+              >
+                Edit variety details
+              </button>
+            </div>
+            {plant.tempPref && <p className="mt-1 text-xs text-slate-400">Temp: {plant.tempPref}</p>}
+            {plant.timeToMaturity && <p className="text-xs text-slate-400">Maturity: {plant.timeToMaturity}</p>}
+            {plant.careInstructions && <p className="mt-1 text-xs text-slate-400">Care: {plant.careInstructions}</p>}
+            {plant.about && <p className="text-xs text-slate-400">About: {plant.about}</p>}
+            {plant.uses && <p className="text-xs text-slate-400">Uses: {plant.uses}</p>}
+            {plant.details && <p className="text-xs text-slate-400">Details: {plant.details}</p>}
+          </div>
           <label className="block text-sm text-slate-400">
             Planted on
             <input type="date" value={plantedAt} onChange={(e) => setPlantedAt(e.target.value)} className={textInput} />
           </label>
           <label className="block text-sm text-slate-400">
-            Care instructions
-            <textarea value={careInstructions} onChange={(e) => setCareInstructions(e.target.value)} rows={2} className={textInput} />
-          </label>
-          <label className="block text-sm text-slate-400">
-            About
-            <textarea value={about} onChange={(e) => setAbout(e.target.value)} rows={2} className={textInput} />
-          </label>
-          <label className="block text-sm text-slate-400">
-            Uses
-            <textarea value={uses} onChange={(e) => setUses(e.target.value)} rows={2} className={textInput} />
-          </label>
-          <label className="block text-sm text-slate-400">
-            Notes
+            Notes for this plant
             <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className={textInput} />
           </label>
           <button onClick={saveDetails} className="rounded-lg bg-emerald-700 px-4 py-2 font-medium hover:bg-emerald-600">
@@ -306,6 +297,14 @@ export default function PlantModal({
             </div>
           )}
         </div>
+
+        {editingVariety && (
+          <EditVarietyModal
+            plant={plant}
+            onClose={() => setEditingVariety(false)}
+            onSaved={onChanged}
+          />
+        )}
       </div>
     </div>
   );

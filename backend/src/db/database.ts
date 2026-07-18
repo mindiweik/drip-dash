@@ -35,18 +35,30 @@ CREATE TABLE IF NOT EXISTS chores (
   created_at TEXT NOT NULL,
   completed_at TEXT
 );
+CREATE TABLE IF NOT EXISTS catalog (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  variety TEXT,
+  temp_pref TEXT,
+  time_to_maturity TEXT,
+  care_instructions TEXT,
+  about TEXT,
+  uses TEXT,
+  details TEXT,
+  demo INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_catalog_identity
+  ON catalog (name, COALESCE(variety, ''));
 CREATE TABLE IF NOT EXISTS plants (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   gardyn_id TEXT NOT NULL,
   col INTEGER NOT NULL,
   position INTEGER NOT NULL,
-  name TEXT NOT NULL,
-  variety TEXT,
+  catalog_id INTEGER,
   planted_at TEXT,
   notes TEXT,
-  care_instructions TEXT,
-  about TEXT,
-  uses TEXT,
+  demo INTEGER NOT NULL DEFAULT 0,
   removed_at TEXT,
   removed_reason TEXT
 );

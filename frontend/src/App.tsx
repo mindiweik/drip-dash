@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
-import { fetchStatus, fetchChores, fetchPlants, completeChore, uncompleteChore } from './api';
-import type { GardenStatus, Chore, Plant } from './api';
+import { fetchStatus, fetchChores, fetchPlants, fetchCatalog, clearDemoData, completeChore, uncompleteChore } from './api';
+import type { GardenStatus, Chore, Plant, CatalogEntry } from './api';
 import GardenPage from './components/GardenPage';
 import BreakBoard from './components/BreakBoard';
 import PlantModal from './components/PlantModal';
@@ -14,6 +14,7 @@ function App() {
   const [chores, setChores] = useState<Chore[]>([]);
   const [doneToday, setDoneToday] = useState<Chore[]>([]);
   const [plants, setPlants] = useState<Plant[]>([]);
+  const [catalog, setCatalog] = useState<CatalogEntry[]>([]);
   const [degraded, setDegraded] = useState(false);
   const [tab, setTab] = useState<Tab>('gardyn');
   const [gardenIndex, setGardenIndex] = useState(0);
@@ -22,11 +23,12 @@ function App() {
 
   const load = useCallback(async () => {
     try {
-      const [g, c, p] = await Promise.all([fetchStatus(), fetchChores(), fetchPlants()]);
+      const [g, c, p, cat] = await Promise.all([fetchStatus(), fetchChores(), fetchPlants(), fetchCatalog()]);
       setGardens(g);
       setChores(c.chores);
       setDoneToday(c.doneToday);
       setPlants(p);
+      setCatalog(cat);
       setSelectedPlant((cur) => (cur ? p.find((x) => x.id === cur.id) ?? null : null));
       setDegraded(false);
     } catch (err) {
@@ -69,9 +71,25 @@ function App() {
     <main className="mx-auto flex min-h-screen max-w-4xl flex-col p-6 pb-24">
       <div className="flex items-baseline justify-between">
         <h1 className="text-3xl font-bold">Drip Dash</h1>
-        {degraded && (
-          <p className="text-sm text-amber-500">Backend unreachable, retrying every minute</p>
-        )}
+        <div className="flex items-baseline gap-3">
+          {degraded && (
+            <p className="text-sm text-amber-500">Backend unreachable, retrying every minute</p>
+          )}
+          <button
+            onClick={async () => {
+              if (!window.confirm('Remove the demo plants and demo varieties? Your own entries are kept.')) return;
+              try {
+                await clearDemoData();
+                await load();
+              } catch (err) {
+                console.error('clear demo failed:', err);
+              }
+            }}
+            className="rounded-lg bg-slate-800 px-3 py-1 text-xs text-slate-400 hover:bg-slate-700"
+          >
+            Clear demo data
+          </button>
+        </div>
       </div>
 
       <div className="mt-6 flex-1">
@@ -132,8 +150,10 @@ function App() {
           gardenName={garden.name}
           col={addTarget.col}
           position={addTarget.position}
+          catalog={catalog}
           onClose={() => setAddTarget(null)}
           onAdded={() => void load()}
+          onCatalogChanged={() => void load()}
         />
       )}
 

@@ -96,10 +96,10 @@ export function seedFakePlantTasks(db: Database.Database, now: string): void {
     .prepare("SELECT COUNT(*) as n FROM chores WHERE source = 'plant'")
     .get() as { n: number };
   if (existing.n > 0) return;
-  const plants = db.prepare('SELECT id, name FROM plants ORDER BY id').all() as Array<{
-    id: number;
-    name: string;
-  }>;
+  const plants = db.prepare(
+    `SELECT p.id AS id, cat.name AS name FROM plants p
+     LEFT JOIN catalog cat ON cat.id = p.catalog_id ORDER BY p.id`,
+  ).all() as Array<{ id: number; name: string }>;
   const inAWeek = new Date(new Date(now).getTime() + 7 * 24 * 60 * 60 * 1000).toISOString();
   const byName = new Map(plants.map((p) => [p.name, p.id]));
   const seedTask = (name: string, title: string, kind: TaskKind, dueAt: string | null) => {
